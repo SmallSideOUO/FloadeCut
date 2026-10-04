@@ -1,21 +1,24 @@
 // Language status + t(): The original Chinese text is the key (no additional key namespace is created),
 // if the active-language dictionary cannot be found, it will fall back to Chinese.
-// Never go blank. Switch persistence localStorage('cc.locale'), subscription rerendering (useSyncExternalStore).
+// Never go blank. Switch persistence localStorage('floade.locale'), subscription rerendering (useSyncExternalStore).
 // Rules: Use useT() (subscription switching) in React components; pure helper modules can directly import { t }
 //  — As long as the component that renders its output calls useT(), it will be recalculated when switching languages.
 // LLM interface (systemPrompt/tool ​​description/skill content) and persistent dynamic history tags do not enter i18n.
-// Default language: the saved choice wins; otherwise the system language (zh/ru), and English for everything else.
+// The saved choice wins; Floade prefers Traditional Chinese on a fresh install.
 import { useSyncExternalStore } from 'react';
 import { ensureLocaleDict, localeDictReady, localeDicts } from './dictRegistry';
+import { toTraditionalUi } from './traditional';
+import { productCopy } from '../branding';
 
 export { ensureLocaleDict } from './dictRegistry';
 
-export type Locale = 'zh' | 'en' | 'it' | 'ru';
+export type Locale = 'zh-TW' | 'zh' | 'en' | 'it' | 'ru';
 
-export const ALL_LOCALES: readonly Locale[] = ['zh', 'en', 'it', 'ru'];
+export const ALL_LOCALES: readonly Locale[] = ['zh-TW', 'en', 'zh', 'it', 'ru'];
 
-const STORAGE_KEY = 'cc.locale';
+const STORAGE_KEY = 'floade.locale';
 const DOCUMENT_LANG: Record<Locale, string> = {
+  'zh-TW': 'zh-Hant-TW',
   zh: 'zh-CN',
   en: 'en',
   it: 'it',
@@ -25,23 +28,25 @@ const DOCUMENT_LANG: Record<Locale, string> = {
 function systemLocale(): Locale {
   try {
     const tag = String(navigator.language ?? '').toLowerCase();
-    if (tag.startsWith('zh')) return 'zh';
+    if (tag.startsWith('zh')) return /hant|tw|hk|mo/.test(tag) ? 'zh-TW' : 'zh';
     if (tag.startsWith('it')) return 'it';
     if (tag.startsWith('ru')) return 'ru';
-    return 'en';
+    return 'zh-TW';
   } catch {
-    return 'en';
+    return 'zh-TW';
   }
 }
 
 function readInitial(): Locale {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === 'zh' || stored === 'en' || stored === 'it' || stored === 'ru') return stored;
+    if (stored && ALL_LOCALES.includes(stored as Locale)) return stored as Locale;
   } catch {
     // Private mode / storage disabled → system language below.
   }
-  return systemLocale();
+  // Floade starts in Traditional Chinese; later explicit selections persist.
+  const preferred = systemLocale();
+  return preferred === 'zh' ? 'zh-TW' : preferred;
 }
 
 let current: Locale = readInitial();
@@ -58,7 +63,8 @@ export function subscribeLocale(onChange: () => void): () => void {
   return () => { subscribers.delete(onChange); };
 }
 
-export function localeLanguageName(locale: Locale): 'Chinese' | 'English' | 'Italian' | 'Russian' {
+export function localeLanguageName(locale: Locale): 'Traditional Chinese' | 'Chinese' | 'English' | 'Italian' | 'Russian' {
+  if (locale === 'zh-TW') return 'Traditional Chinese';
   if (locale === 'zh') return 'Chinese';
   if (locale === 'it') return 'Italian';
   if (locale === 'ru') return 'Russian';
@@ -70,7 +76,7 @@ export function localizedCatalogText(
   chinese: string,
   locale: Locale = current,
 ): string {
-  return locale === 'zh' ? chinese : english;
+  return locale === 'zh-TW' ? toTraditionalUi(chinese) : locale === 'zh' ? chinese : english;
 }
 
 function notifySubscribers(): void {
@@ -107,7 +113,8 @@ export function prefetchLocaleDicts(): void {
 /** t('Selected {n}', { n: 3 }) - The Chinese original text is the key; the placeholder {name} has the same name in both languages. */
 export function t(zh: string, params?: Record<string, string | number>): string {
   const { ui, uiFallback } = localeDicts(current);
-  const raw = ui[zh] ?? uiFallback[zh] ?? zh;
+  const translated = productCopy(ui[zh] ?? uiFallback[zh] ?? zh);
+  const raw = current === 'zh-TW' ? toTraditionalUi(translated) : translated;
   if (!params) return raw;
   return raw.replace(/\{(\w+)\}/g, (match, key: string) => (key in params ? String(params[key]) : match));
 }
@@ -117,7 +124,9 @@ export function t(zh: string, params?: Record<string, string | number>): string 
  * It is only used for display and does not change the data itself (the name is also a reference key). */
 export function tData(text: string): string {
   const { data, dataFallback } = localeDicts(current);
-  return data[text] ?? dataFallback[text] ?? text;
+  const translated = data[text] ?? dataFallback[text];
+  if (translated === undefined) return text;
+  return current === 'zh-TW' ? toTraditionalUi(translated) : translated;
 }
 
 /** Get t in the component: subscribe to language switching, trigger rerendering of this component when switching. */

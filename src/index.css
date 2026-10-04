@@ -122,6 +122,22 @@ html, body { overflow: hidden; }
 
 button, input, select { font: inherit; }
 
+/* Floade's shared desktop language: quiet surfaces, rounded cards and blue focus. */
+body { font-family: "Segoe UI Variable", "Segoe UI", "Microsoft JhengHei", system-ui, sans-serif; }
+.floade-shell { overflow: hidden; }
+.floade-language { height: 32px; padding: 0 9px; border: 1px solid var(--cc-border); border-radius: 8px; background: var(--cc-panel-alt); color: var(--cc-text); font-size: 12px; cursor: pointer; }
+.floade-header-actions > button, .floade-header-actions > div > button { min-height: 32px; border-radius: 8px; }
+.floade-header-actions button:hover { background: var(--cc-hover) !important; color: var(--cc-text-strong) !important; }
+.floade-new-project { transition: border-color 140ms, background 140ms; }
+.floade-new-project:hover { border-color: var(--cc-accent) !important; background: var(--cc-panel-alt) !important; }
+.floade-new-project-icon { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 13px; background: rgba(var(--cc-accent-rgb), .12); color: var(--cc-accent); margin-bottom: 4px; }
+html[data-cc-skin='latte'] .floade-dashboard > header img, html[data-cc-skin='latte'] .cc-chat-brand img { filter: invert(1); }
+@media (max-width: 780px) {
+  .floade-project-toolbar { flex-wrap: wrap; }
+  .floade-project-toolbar > span:last-child { flex-wrap: wrap; margin-left: 0 !important; }
+  .floade-header-actions { gap: 3px !important; }
+}
+
 .cc-timeline-hover-guide {
   position:absolute; top:0; width:1px; z-index:12; pointer-events:none;
   background:rgba(var(--cc-accent-rgb),0.5);
@@ -291,7 +307,7 @@ button, input, select { font: inherit; }
   .cc-composer-more-btn { display:flex !important; }
 }
 .cc-chat-send-btn { flex:0 0 28px; }
-.cc-chat-messages.empty { display:flex; align-items:center; justify-content:center; overflow:hidden; }
+.cc-chat-messages.empty { display:flex; align-items:safe center; justify-content:center; overflow-x:hidden; overflow-y:auto; }
 .cc-chat-header { min-height:48px; display:flex; align-items:center; gap:8px; padding:6px 12px; box-sizing:border-box; border-bottom:0.5px solid var(--cc-border); }
 .cc-chat-capability-banner { display:flex; align-items:center; gap:6px; padding:6px 12px; background:color-mix(in srgb, var(--cc-accent) 8%, var(--cc-panel)); border-bottom:0.5px solid var(--cc-border); font-size:11px; color:var(--cc-text-dim); line-height:1.45; }
 .cc-chat-capability-banner span { flex:1; min-width:0; }

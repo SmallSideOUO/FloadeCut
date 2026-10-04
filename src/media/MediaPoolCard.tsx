@@ -1,7 +1,5 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { Icon, type IconName } from '../components/icons';
-import { MusicAnalysisBadge } from '../audio/intelligence/MusicAnalysisBadge';
-import type { MusicAnalysisCardState } from '../audio/intelligence/useMusicAnalysisCards';
 import type { MediaAsset, MediaFolder } from '../editor/types';
 import { isTimelineMediaAssetKind } from '../editor/mediaTypes';
 import { useT } from '../i18n/locale';
@@ -11,7 +9,6 @@ import { assetIdsFromFolderDrop } from './folderDrop';
 import { durationLabel, mediaRatioLabel } from './mediaPoolFormat';
 import { MgThumb } from './MgThumb';
 import { usePreviewMediaSource } from './previewMedia';
-import { assetCanTranscribe } from '../transcript/transcribe-jobs';
 
 interface MediaAssetCardProps {
   asset: MediaAsset;
@@ -22,7 +19,6 @@ interface MediaAssetCardProps {
   missing: boolean;
   used: boolean;
   view: 'grid' | 'list';
-  musicAnalysis?: MusicAnalysisCardState;
   canRelink: boolean;
   onAdd: (asset: MediaAsset) => void;
   onPointerChange: (id: string | null) => void;
@@ -188,7 +184,6 @@ export const MediaAssetCard = memo(function MediaAssetCard(props: MediaAssetCard
     >
       <AssetThumbArea {...props} />
       <button className="cc-asset-name" title={asset.name} tabIndex={-1}>{asset.name}</button>
-      {!missing && props.musicAnalysis && props.musicAnalysis.state !== 'unavailable' && <MusicAnalysisBadge asset={asset} state={props.musicAnalysis} />}
     </div>
   );
 });
@@ -270,15 +265,7 @@ function AssetBadges(props: MediaAssetCardProps) {
         event.stopPropagation();
         props.onOpenMenu(asset.id, event.currentTarget);
       }}><Icon name="more" size={17} /></button>
-      {props.onTranscribe && assetCanTranscribe(asset.kind, asset.transcribeStatus) && <button
-        className="cc-asset-transcribe"
-        aria-label={asset.transcribeStatus === 'failed' ? t('重新转写：{name}', { name: asset.name }) : t('转写：{name}', { name: asset.name })}
-        title={asset.transcribeStatus === 'failed' ? t('重新转写') : t('转写')}
-        onClick={(event) => {
-          event.stopPropagation();
-          props.onTranscribe?.(asset.id);
-        }}
-      ><Icon name="mic" size={14} strokeWidth={1.5} /></button>}
+
       {asset.transcribeStatus === 'running' && <span className="cc-asset-transcribe-status" title={t('正在转写…')}><span className="cc-asset-transcribe-spinner" /></span>}
       {asset.transcribeStatus === 'done' && <button
         className="cc-asset-transcribe-status cc-asset-transcribe-done"

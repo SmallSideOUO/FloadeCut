@@ -2,9 +2,7 @@ import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import type { PlayerRef } from '@remotion/player';
 import type { TimelineItem, TrackId } from '../editor/types';
 import { emitSelectionRef, transcriptRefFromDomSelection, useSelectionRefMode } from '../agent/selection-refs';
-import { useTranscript } from './useTranscript';
 import { wordTimelineFrame } from './edit';
-import { preferredTranscriptionProvider } from './provider';
 import { hasOperationalTranscript, type TranscriptWord } from './types';
 import { analyzeSilences } from './segment';
 import { ScriptView } from './TranscriptViews';
@@ -36,12 +34,10 @@ const MANY_CLIPS = 10;
 
 export function TranscriptPanel({
   playerRef, fps, items, trackOptions,
-  onSetItemTranscript, onToggleWord, onCleanScript, onSetGapCap, onSetTranscriptPlayOrder, onReorderTrackItems, onClearEdits,
+  onToggleWord, onCleanScript, onSetGapCap, onSetTranscriptPlayOrder, onReorderTrackItems, onClearEdits,
   onImportSrt, onOpenCaptionStyles,
 }: TranscriptPanelProps) {
   const t = useT();
-  const { status, error, progressNote, runMany, reset } = useTranscript();
-  const localProvider = preferredTranscriptionProvider() === 'local';
   const defaultId = useMemo(() => pickDefaultTrack(trackOptions, items), [trackOptions, items]);
   const [track, setTrack] = useState<TrackId | null>(defaultId);
   // Both views use ScriptView (speaker blocks + Gap rows). segment uses a lower
@@ -71,7 +67,6 @@ export function TranscriptPanel({
   }, [track, trackOptions, defaultId]);
 
   const activeTrack = trackOptions.find((t) => t.id === track) ?? null;
-  const busy = status === 'uploading' || status === 'processing';
 
   const allClips = useMemo(() => (track ? mediaOnTrack(items, track) : []), [items, track]);
   const speechClips = useMemo(() => allClips.filter((c) => !isLikelyNonSpeech(c)), [allClips]);
@@ -112,18 +107,6 @@ export function TranscriptPanel({
     if (!pickMode || !bodyRef.current) return;
     const reference = transcriptRefFromDomSelection(bodyRef.current, clips, fps);
     if (reference) emitSelectionRef(reference);
-  };
-
-  const transcribeTrack = async () => {
-    if (!clips.length) return;
-    const jobs = clips.map((c) => ({ path: c.src!, itemId: c.id, label: clipLabel(c) }));
-    reset();
-    try {
-      await runMany(jobs, (itemId, r) => {
-        onSetItemTranscript(itemId, r.words);
-        setFocusItemId(itemId);
-      });
-    } catch { /* hook holds error */ }
   };
 
   const sectionsToShow = useMemo(() => {
@@ -261,9 +244,7 @@ export function TranscriptPanel({
             <div className="cc-tx-empty-kicker">{aliasLabel}</div>
             <div className="cc-tx-empty-title">{t('转写词级文字稿')}</div>
             <p className="cc-tx-muted">
-              {localProvider
-                ? t('多语言词级转写 · 本地模型 · 该轨共 {n} 段会逐段转写（免费、离线、素材不出本机）。转写后可点词删减（删词=剪音频）。', { n: clips.length })
-                : t('多语言词级转写 · 说话人分离 · 该轨共 {n} 段会逐段上传。转写后可点词删减（删词=剪音频）。', { n: clips.length })}
+              {t('可以編輯現有文字稿，或匯入 SRT 字幕。')}
             </p>
             {skippedMusic > 0 && (
               <label className="cc-tx-check music">
@@ -285,11 +266,8 @@ export function TranscriptPanel({
                 {t('该轨只有背景音乐类素材。打开「包含疑似背景音乐」或换到配音轨。')}
               </p>
             ) : (
-              <button type="button" onClick={() => void transcribeTrack()} disabled={busy} className="cc-tx-btn primary lg">
-                {busy ? (progressNote ?? t('转写中…')) : t('转写 {alias}（{n} 段）', { alias: activeTrack?.alias ?? '', n: clips.length })}
-              </button>
+              <p className="cc-tx-muted">{t('請匯入字幕檔，或由外部工具提供文字稿。')}</p>
             )}
-            {status === 'error' && <div className="cc-tx-error">{error}</div>}
           </div>
         ) : (
           <>
@@ -335,9 +313,7 @@ export function TranscriptPanel({
                       ›
                     </button>
                   </div>
-                  <button type="button" className="cc-tx-btn sm" disabled={busy} onClick={() => void transcribeTrack()}>
-                    {busy ? '…' : t('重新转写')}
-                  </button>
+                  <p className="cc-tx-muted">{t('請匯入字幕檔，或由外部工具提供文字稿。')}</p>
                 </div>
                 {clips.length > MANY_CLIPS && (
                   <label className="cc-tx-nav-mode">
@@ -462,20 +438,13 @@ export function TranscriptPanel({
                 );
               })}
             </div>
-            {(status === 'error' || error) && <div className="cc-tx-error">{error}</div>}
-            {busy && progressNote && <div className="cc-tx-muted" style={{ marginTop: 8 }}>{progressNote}</div>}
-            {!busy && trackHasWords && (
+            {trackHasWords && (
               <>
                 <div className="cc-tx-muted" style={{ marginTop: 10 }}>
                   {t('已转写 {done}/{total} 段', { done: transcribed.length, total: clips.length })}
-                  {transcribed.length < clips.length ? t(' · 可点「重新转写」补全失败段') : ''}
                   {clips.length > MANY_CLIPS && !showAllSections ? t(' · 正文仅显示当前段') : ''}
                 </div>
-                {localProvider && (
-                  <div className="cc-tx-muted" style={{ marginTop: 4 }}>
-                    {t('本地转写未做说话人分离，全部内容归为同一说话人。')}
-                  </div>
-                )}
+
               </>
             )}
           </>

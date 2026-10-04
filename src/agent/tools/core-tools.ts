@@ -1,10 +1,6 @@
 import type { AgentContext } from '../context';
 import type { AgentToolSchema } from '../tool-schema';
 import { defaultTrackId, resolveTrackId, trackAlias } from '../../editor/types';
-import type { MediaAsset } from '../../editor/types';
-import { prepareTemplate } from '../../template-host';
-import { generateAgentText } from '../client';
-import { designStyleHint } from '../systemPrompt';
 import { execCoreDataTool } from './core-data-tools';
 import { execJianyingExport } from './jianying-export-tool';
 
@@ -72,72 +68,6 @@ function execTemplateCatalog(name: string, args: Args, ctx: AgentContext): unkno
   return { ok: true, added: template.name, trackId: track, track: trackAlias(ctx.getState(), track) };
 }
 
-async function generateMgCode(description: string, brandHint = ''): Promise<string> {
-  const system = `You write ONE Remotion motion-graphic React component. Output ONLY the code — no markdown fences, no prose.
-Contract (MUST follow exactly):
-- Shape: const Name = ({item}) => { ...; return (<AbsoluteFill>...</AbsoluteFill>); };
-- NO import / require / export. These globals are already injected: React, useCurrentFrame, useVideoConfig, interpolate, interpolateColors, spring, Easing, random, Img, Audio, Sequence, AbsoluteFill.
-- Canvas is 1920x1080. Animate with useCurrentFrame()+interpolate()/spring({fps,frame,config}). Get { fps, durationInFrames } from useVideoConfig().
-- interpolate()'s inputRange MUST be strictly increasing (e.g. [0, 15, 30]). When breakpoints are computed (per-item offsets, durationInFrames fractions), clamp with Math.max(prev + 1, next) so a later value can never be <= an earlier one — a non-monotonic inputRange throws at render time.
-- Pure, synchronous rendering only. FORBIDDEN: fetch, XMLHttpRequest, WebSocket, document, window, globalThis, eval, new Function, .constructor, localStorage, setTimeout, setInterval, while(true), for(;;), debugger.
-- Style inline. Make it clean and visually appealing (large readable text, tasteful colors, smooth fade/slide/scale animations).${brandHint}`;
-  const result = await generateAgentText({ maxOutputTokens: 64000, system, prompt: description });
-  return result.trim().replace(/^\s*```[a-zA-Z]*\s*\n?/, '').replace(/\n?```\s*$/, '').trim();
-}
-
-// Upper bounds mirror the tool schemas. The preview allocates a canvas and a
-// frame loop from these values, so an unbounded width or duration from the
-// model freezes the tab — clamp here too rather than trusting schema alone.
-const MAX_MG_DIMENSION = 8192;
-const MAX_MG_FRAMES = 36_000;
-
-function generatedAsset(args: Args, code: string, ctx: AgentContext): MediaAsset {
-  const fps = ctx.getState().fps || 30;
-  const requestedFrames = typeof args.durationInFrames === 'number' && args.durationInFrames > 0
-    ? Math.round(args.durationInFrames)
-    : Math.round((Number(args.durationSeconds) || 3) * fps);
-  const dimension = (value: unknown, fallback: number): number => (
-    typeof value === 'number' && Number.isFinite(value) && value > 0
-      ? Math.min(MAX_MG_DIMENSION, Math.max(16, Math.round(value)))
-      : fallback
-  );
-  return {
-    id: crypto.randomUUID(), name: String(args.name ?? '').trim() || 'Generated MG',
-    kind: 'motion-graphic', src: '', code,
-    durationInFrames: Number.isFinite(requestedFrames)
-      ? Math.min(MAX_MG_FRAMES, Math.max(15, requestedFrames))
-      : 15,
-    width: dimension(args.width, 1920),
-    height: dimension(args.height, 1080),
-    props: {},
-  };
-}
-
-async function createMotionGraphic(args: Args, ctx: AgentContext): Promise<unknown> {
-  const description = String(args.prompt ?? args.description ?? '').trim();
-  if (!description) return { error: 'prompt (or description) is required' };
-  let code: string;
-  try {
-    code = await generateMgCode(description, designStyleHint(ctx.getDoc().designStyle));
-  } catch (error) {
-    return { error: `generation failed: ${error instanceof Error ? error.message : String(error)}` };
-  }
-  if (!code) return { error: 'model returned empty code' };
-  try {
-    await prepareTemplate(code);
-  } catch (error) {
-    return { error: `generated code rejected by sandbox: ${error instanceof Error ? error.message : String(error)}`, code };
-  }
-  const asset = generatedAsset(args, code, ctx);
-  ctx.commands.addAsset(asset);
-  return {
-    ok: true, status: 'succeeded', jobId: `mg_${asset.id}`, assetId: asset.id,
-    name: asset.name, kind: asset.kind, durationInFrames: asset.durationInFrames,
-    width: asset.width, height: asset.height,
-    note: 'Motion graphic asset is in the media pool only (submit_* contract). Place with edit_item adds:[{type:"motion-graphic",assetId:"<this assetId>",trackId?,fromFrame?}]. For catalog templates use library:motion-graphic:<templateId> or add_motion_graphic instead.',
-  };
-}
-
 export async function execCoreTool(
   name: string,
   args: Args,
@@ -152,6 +82,5 @@ export async function execCoreTool(
   if (name === 'list_templates' || name === 'search_templates' || name === 'add_motion_graphic') {
     return execTemplateCatalog(name, args, ctx);
   }
-  if (name === 'submit_motion_graphic' || name === 'create_motion_graphic') return createMotionGraphic(args, ctx);
   return { error: `unknown tool ${name}` };
 }

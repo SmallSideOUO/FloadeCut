@@ -25,7 +25,6 @@ export const SHORTCUT_GROUPS: { id: ShortcutGroup; label: string; labelZh: strin
   { id: 'navigation', label: 'Navigation', labelZh: '导航' },
   { id: 'markers', label: 'Markers', labelZh: '标记' },
   { id: 'view', label: 'View', labelZh: '视图' },
-  { id: 'ai', label: 'AI', labelZh: 'AI' },
 ];
 
 /** Canonical 56 actions — source of truth for help UI + matcher. */
@@ -91,7 +90,6 @@ export const SHORTCUT_CATALOG: ShortcutAction[] = [
   { id: 'fullscreen', label: 'Fullscreen preview', labelZh: '全屏', group: 'view', keys: '`' },
   { id: 'keyboard-shortcuts', label: 'Keyboard shortcuts', labelZh: '快捷键列表', group: 'view', keys: 'Mod + Alt + K', disabledWhenTyping: false },
 
-  { id: 'ask-ai', label: 'Add to AI chat', labelZh: '聚焦 AI 对话', group: 'ai', keys: 'Tab' },
 ];
 
 export const SHORTCUT_BY_ID = Object.fromEntries(

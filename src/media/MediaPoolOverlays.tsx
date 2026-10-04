@@ -1,7 +1,6 @@
 import { createPortal } from 'react-dom';
 import { useEffect, useRef, type CSSProperties, type RefObject } from 'react';
 import type { MediaAsset, MediaFolder } from '../editor/types';
-import type { MusicAnalysisCardState } from '../audio/intelligence/useMusicAnalysisCards';
 import { useT } from '../i18n/locale';
 import { theme } from '../theme';
 import { AssetExportButton } from './AssetExportButton';
@@ -26,7 +25,7 @@ interface AssetMenuPortalProps {
   onRemove: () => void;
   onMove: (folderId?: string) => void;
   onAddTimeline?: () => void;
-  onAddChat: () => void;
+  onAddChat?: () => void;
   /** Transcribe the menu's asset selection (enabled when any is transcribable). */
   onTranscribe?: () => void;
   /** Open the transcript viewer for the menu's anchor asset. */
@@ -43,7 +42,7 @@ interface BlankMediaMenuActionsProps {
   onPaste: () => void;
   onSelectAll: () => void;
   onUpload: () => void;
-  onSemanticSearch: () => void;
+  onSemanticSearch?: () => void;
   onMobileUpload: () => void;
   onCreateFolder: () => void;
   onViewToggle: () => void;
@@ -57,7 +56,7 @@ export function BlankMediaMenuActions(props: BlankMediaMenuActionsProps) {
     <button type="button" disabled={!props.clipboardCount} onClick={props.onPaste}>{t('粘贴副本')}{props.clipboardCount > 1 ? ` (${props.clipboardCount})` : ''}</button>
     <button type="button" disabled={!props.visibleCount} onClick={props.onSelectAll}>{t(props.allVisibleSelected ? '取消全选' : '全选')}</button>
     <hr />
-    <button type="button" onClick={props.onSemanticSearch}>{t('本地语义搜索')}</button>
+    {props.onSemanticSearch && <button type="button" onClick={props.onSemanticSearch}>{t('本地语义搜索')}</button>}
     <button type="button" onClick={props.onMobileUpload}>{t('手机传素材')}</button>
     <button type="button" onClick={props.onUpload}>{t('上传素材')}</button>
     <button type="button" onClick={props.onCreateFolder}>{t('新建文件夹')}</button>
@@ -242,19 +241,6 @@ export function MissingMediaBanner({ count, onOpen, onRemoveAll }: MissingMediaB
  * video card: the badge only ever said the same thing, and repeated per card it read like
  * a problem with each asset.
  */
-export function MusicModelsNotice({ cards }: { cards: ReadonlyMap<string, MusicAnalysisCardState> }) {
-  const t = useT();
-  let unavailable = false;
-  for (const state of cards.values()) {
-    if (state.state === 'unavailable') { unavailable = true; break; }
-  }
-  if (!unavailable) return null;
-  return (
-    <div className="cc-media-export-guide" role="note">
-      {t('本地音乐分析模型未安装，素材卡片暂不显示分析入口。在 设置 → 本地 AI 中安装「节拍」与「音乐语义」模型包后即可分析。')}
-    </div>
-  );
-}
 
 interface RelinkAllDialogProps {
   open: boolean;

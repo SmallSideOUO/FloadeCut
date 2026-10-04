@@ -5,8 +5,6 @@ import { AUDIO_ASSETS } from '../audio/library';
 import { pluginTemplates } from '../library/pluginTemplateCatalog';
 import { usePluginPacks } from '../library/pluginResources';
 import { useOfflineMedia } from '../media/useOfflineMedia';
-import { loadCreativeMode, saveCreativeMode } from '../persist/projectStore';
-import { loadChatAutoApply } from '../persist/sessionPrefs';
 import type { SelectedPreviewStatus } from '../gl/previewAdapter';
 import { showAppToast } from '../ui/appToast';
 import { TEMPLATES } from './initial';
@@ -32,17 +30,6 @@ function useLiveRef<T>(value: T) {
   const ref = useRef(value);
   ref.current = value;
   return ref;
-}
-
-function useCreativeMode(projectId: string) {
-  const [creativeMode, setCreativeMode] = useState<string | null>(null);
-  const creativeModeRef = useLiveRef(creativeMode);
-  useEffect(() => { loadCreativeMode(projectId).then(setCreativeMode); }, [projectId]);
-  const changeCreativeMode = useCallback((id: string | null) => {
-    setCreativeMode(id);
-    saveCreativeMode(projectId, id);
-  }, [projectId]);
-  return { creativeMode, creativeModeRef, changeCreativeMode };
 }
 
 function useSelectedPreviewStatuses(selectedItemId?: string, selectedTransitionId?: string) {
@@ -104,8 +91,6 @@ interface AgentContextOptions {
   stateRef: MutableRefObject<TimelineState>;
   docRef: MutableRefObject<ProjectDoc>;
   offlineSrcsRef: MutableRefObject<ReadonlySet<string>>;
-  creativeModeRef: MutableRefObject<string | null>;
-  changeCreativeMode: (id: string | null) => void;
   allTemplatesRef: MutableRefObject<AgentContext['templates']>;
   flushBeforeLeaveRef: MutableRefObject<() => Promise<boolean>>;
   getUndoTarget: () => ProjectDoc | null;
@@ -115,7 +100,7 @@ interface AgentContextOptions {
 function useAgentContext(options: AgentContextOptions): AgentContext {
   const {
     commands, projectId, onRename, stateRef, docRef, offlineSrcsRef,
-    creativeModeRef, changeCreativeMode, allTemplatesRef, flushBeforeLeaveRef,
+    allTemplatesRef, flushBeforeLeaveRef,
     getUndoTarget, getRedoTarget,
   } = options;
   return useMemo(() => ({
@@ -123,11 +108,10 @@ function useAgentContext(options: AgentContextOptions): AgentContext {
     getState: () => stateRef.current,
     getDoc: () => docRef.current,
     getOfflineMediaSrcs: () => offlineSrcsRef.current,
-    getCreativeMode: () => creativeModeRef.current,
+    getCreativeMode: () => null,
     getUndoTarget,
     getRedoTarget,
-    getApprovalMode: () => (loadChatAutoApply(projectId) ? 'auto' : 'manual'),
-    setCreativeMode: changeCreativeMode,
+    getApprovalMode: () => 'manual',
     get templates() { return allTemplatesRef.current; },
     audio: AUDIO_ASSETS,
     getProjectId: () => projectId,
@@ -139,8 +123,8 @@ function useAgentContext(options: AgentContextOptions): AgentContext {
     },
     onProjectRenamed: onRename,
   }), [
-    commands, projectId, onRename, changeCreativeMode, stateRef, docRef, offlineSrcsRef,
-    creativeModeRef, allTemplatesRef, flushBeforeLeaveRef, getUndoTarget, getRedoTarget,
+    commands, projectId, onRename, stateRef, docRef, offlineSrcsRef,
+    allTemplatesRef, flushBeforeLeaveRef, getUndoTarget, getRedoTarget,
   ]);
 }
 
@@ -155,7 +139,6 @@ export function useEditorAgentEnvironment(options: EditorAgentEnvironmentOptions
   const flushBeforeLeaveRef = useRef<() => Promise<boolean>>(async () => true);
   const playerRef = useRef<PlayerRef | null>(null);
   const offlineMedia = useOfflineMedia(doc);
-  const creative = useCreativeMode(projectId);
   const previewStatuses = useSelectedPreviewStatuses(selectedItemId, selectedTransitionId);
   const clearPreviewStatuses = previewStatuses.setSelectedPreviewStatuses;
   useEffect(
@@ -165,12 +148,12 @@ export function useEditorAgentEnvironment(options: EditorAgentEnvironmentOptions
   const templates = useAllTemplates();
   const applyInspectorSelection = useApplyInspectorSelection(stateRef, commands, options.translate);
   const agentCtx = useAgentContext({
-    ...options, stateRef, docRef, flushBeforeLeaveRef, ...offlineMedia, ...creative, ...templates,
+    ...options, stateRef, docRef, flushBeforeLeaveRef, ...offlineMedia, ...templates,
   });
   const [previewState, setPreviewState] = useState<TimelineState | null>(null);
   return {
     historyGesture, stateRef, docRef, flushBeforeLeaveRef, playerRef,
     applyInspectorSelection, agentCtx, previewState, setPreviewState,
-    ...offlineMedia, ...creative, ...previewStatuses, ...templates,
+    ...offlineMedia, ...previewStatuses, ...templates,
   };
 }

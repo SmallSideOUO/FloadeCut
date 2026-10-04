@@ -13,7 +13,7 @@ async function send(locale: Locale): Promise<void> {
   if (lastSent === locale || typeof fetch !== 'function') return;
   lastSent = locale;
   try {
-    await fetch('/api/keys', {
+    await fetch('/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ UI_LOCALE: locale }),
@@ -24,7 +24,7 @@ async function send(locale: Locale): Promise<void> {
 }
 
 /**
- * Start mirroring. `stored` is the server's current UI_LOCALE (from GET /api/keys → models)
+ * Start mirroring. `stored` is the server's current UI_LOCALE (from GET /api/settings → models)
  * so an already-synced value is not re-sent on every launch.
  */
 export function startUiLocaleSync(stored?: string): () => void {

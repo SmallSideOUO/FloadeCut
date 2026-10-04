@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { useMusicAnalysisCards } from '../audio/intelligence/useMusicAnalysisCards';
 import { useT } from '../i18n/locale';
 import type { MediaAsset, MediaAssetRelinkPatch, MediaFolder } from '../editor/types';
 import { usePersistedState } from '../hooks/usePersistedState';
@@ -11,7 +10,7 @@ import type { SemanticMatch } from './semantic-search/types';
 import { filterMediaAssets, type MediaSortKey, type MediaTypeFilter } from './mediaPoolFilter';
 import { MobileUploadDialog } from './MobileUploadDialog';
 import type { MobileUploadRecord } from './mobileUploadApi';
-import { MissingMediaBanner, MusicModelsNotice, RelinkAllDialog } from './MediaPoolOverlays';
+import { MissingMediaBanner, RelinkAllDialog } from './MediaPoolOverlays';
 import {
   MediaPoolDialogs,
   type MediaAssetDeleteState,
@@ -68,7 +67,7 @@ interface MediaPoolPanelProps {
   /** Add a solid-color clip. */
   onAddSolid?: () => void;
   /** Start (or retry) ASR for one asset from the pool UI. */
-  onTranscribe: (asset: MediaAsset) => void;
+  onTranscribe?: (asset: MediaAsset) => void;
 }
 
 export function MediaPoolPanel({
@@ -77,7 +76,6 @@ export function MediaPoolPanel({
   onDeleteFolder, onMoveAssets, onRenameAsset, onRenameAssets, onSetFavorite, onSetAssetsFavorite, onRemoveAsset, onRemoveAssets, onPasteAssets, onRelinkAsset, onAddSolid, onTranscribe,
 }: MediaPoolPanelProps) {
   const t = useT();
-  const musicAnalysis = useMusicAnalysisCards(assets);
   const [error, setError] = useState<string | null>(null);
   const fileImport = useMediaPoolFileImport({ onImport, onMoveAssets, onCreateFolder, setError, t });
   const {
@@ -381,7 +379,6 @@ export function MediaPoolPanel({
       />
 
       <MissingMediaBanner count={missingList.length} onOpen={() => setShowRelinkAll(true)} onRemoveAll={onRemoveAsset || onRemoveAssets ? () => requestRemoveAssets(missingList) : undefined} />
-      <MusicModelsNotice cards={musicAnalysis} />
 
       {(currentFolder || favoritesOnly || childFolders.length > 0) && <div className="cc-media-breadcrumb">
         <button aria-label={t('返回上级文件夹')} disabled={!currentFolder && !favoritesOnly} onClick={() => {
@@ -404,7 +401,6 @@ export function MediaPoolPanel({
         selected={selected}
         missing={missing}
         usedAssetIds={usedAssetIds}
-        musicAnalysis={musicAnalysis}
         assetMenu={assetMenu}
         canRelink={!!onRelinkAsset}
         onOpenFolder={openFolder}
@@ -423,10 +419,7 @@ export function MediaPoolPanel({
         onToggleSelected={toggleSelected}
         onSetSelected={(ids) => setSelected(new Set(ids))}
         onSetFavorite={onSetFavorite}
-        onTranscribe={(id) => {
-          const target = assets.find((asset) => asset.id === id);
-          if (target) onTranscribe(target);
-        }}
+
         onOpenTranscript={openTranscriptViewer}
       />
 
@@ -446,7 +439,7 @@ export function MediaPoolPanel({
           close: closeAssetMenu, setError, onSetFavorite, onSetAssetsFavorite,
           rename: renameAssets, rememberFocus: modalFocus.remember, startRelink,
           requestRemove: requestRemoveAssets, setConfirmDeleteId, remove: removeAssets,
-          transcribe: (targets) => targets.filter((asset) => (asset.kind === 'audio' || asset.kind === 'video') && asset.transcribeStatus !== 'running' && asset.transcribeStatus !== 'done').forEach((asset) => onTranscribe(asset)),
+          transcribe: (targets) => targets.filter((asset) => (asset.kind === 'audio' || asset.kind === 'video') && asset.transcribeStatus !== 'running' && asset.transcribeStatus !== 'done').forEach((asset) => onTranscribe?.(asset)),
           viewTranscript: (asset) => openTranscriptViewer(asset.id),
           move: onMoveAssets, addToTimeline: onAddAssetsToTimeline, addAsset: onAddAsset,
           addToChat: onAddAssetsToChat,

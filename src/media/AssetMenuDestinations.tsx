@@ -5,7 +5,7 @@ import { runAssetDestinationAction, type AssetDestinationActions } from './asset
 interface AssetMenuDestinationsProps {
   assetName: string;
   onAddTimeline?: () => void;
-  onAddChat: () => void;
+  onAddChat?: () => void;
 }
 
 export function AssetMenuDestinations({
@@ -16,14 +16,14 @@ export function AssetMenuDestinations({
   const t = useT();
   const actions: AssetDestinationActions = {
     timeline: onAddTimeline ?? (() => undefined),
-    chat: onAddChat,
+    chat: onAddChat ?? (() => undefined),
   };
 
   return (
     <div className="cc-asset-menu-destinations">
       <span>{t('添加到：')}</span>
       <div className="cc-asset-menu-destination-buttons">
-        <button
+        {onAddChat && <button
           type="button"
           className="cc-media-menu-item"
           role="menuitem"
@@ -32,7 +32,7 @@ export function AssetMenuDestinations({
         >
           <span className="cc-media-menu-item-icon" aria-hidden="true"><Icon name="sparkles" size={15} /></span>
           <span className="cc-media-menu-item-label">{t('AI 对话框')}</span>
-        </button>
+        </button>}
         {onAddTimeline && <button
           type="button"
           className="cc-media-menu-item"

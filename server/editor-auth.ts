@@ -95,7 +95,7 @@ export function trustedEditorRequest(req: IncomingMessage, requireOrigin: boolea
   }
 }
 
-/** Editor-capable endpoints (uploads, model packs, external-agent bridge) are
+/** Editor-capable endpoints (uploads, storage, external-agent bridge) are
  *  authorized purely by the loopback + Origin request shape: any page served
  *  from the local editor may call them. No credential handshake is needed. */
 export function editorCredentialAuthorized(req: IncomingMessage, requireOrigin: boolean): boolean {

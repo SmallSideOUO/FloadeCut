@@ -4,9 +4,8 @@ import type { AssetMenuPosition } from './useAssetMenu';
 import type { MediaSortKey, MediaTypeFilter } from './mediaPoolFilter';
 import { AssetMenuPortal, BlankMediaMenuPortal, FolderMenuPortal } from './MediaPoolOverlays';
 import { assetMenuFavoriteValue } from './assetMenuSelection';
-import { addAssetsToChat, allVisibleAssetsSelected, toggleVisibleAssetSelection } from './mediaSelectionActions';
+import { allVisibleAssetsSelected, toggleVisibleAssetSelection } from './mediaSelectionActions';
 import { toggleMediaView } from './mediaView';
-import { assetCanTranscribe } from '../transcript/transcribe-jobs';
 import { isTimelineMediaAssetKind } from '../editor/mediaTypes';
 
 interface FolderMenuContext {
@@ -116,10 +115,7 @@ function MediaAssetMenu({ asset: context }: Pick<MediaPoolMenusProps, 'asset'>) 
     onRemove={remove}
     onMove={(folderId) => { if (context.assetIds.length) context.move(context.assetIds, folderId); close(); }}
     onAddTimeline={timelineAssets.length ? () => { if (context.addToTimeline) context.addToTimeline(timelineAssets); else timelineAssets.forEach(context.addAsset); close(); } : undefined}
-    onAddChat={() => { addAssetsToChat(context.assets, context.addToChat); close(); }}
-    onTranscribe={context.assets.some((item) => assetCanTranscribe(item.kind, item.transcribeStatus))
-      ? () => { context.transcribe(context.assets); close(); }
-      : undefined}
+
     onViewTranscript={asset && (asset.transcript?.length ?? 0) > 0
       ? () => { context.viewTranscript(asset); close(); }
       : undefined}
@@ -135,7 +131,6 @@ function MediaBlankMenu({ blank: context }: Pick<MediaPoolMenusProps, 'blank'>) 
     view={context.view} sort={context.sort} type={context.type} onClose={close}
     onPaste={() => { context.paste?.(context.clipboard, context.currentFolderId); close(); }}
     onSelectAll={() => { context.setSelected((selected) => toggleVisibleAssetSelection(selected, context.visibleIds)); close(); }}
-    onSemanticSearch={() => { context.openSemanticSearch(); close(); }}
     onMobileUpload={() => { context.openMobileUpload(); close(); }}
     onUpload={() => { context.inputRef.current?.click(); close(); }}
     onCreateFolder={() => { context.createFolder(); close(); }}

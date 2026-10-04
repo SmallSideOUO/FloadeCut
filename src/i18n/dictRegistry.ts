@@ -32,7 +32,7 @@ let loaded: Readonly<Partial<Record<Locale, LocaleDicts>>> = {};
 const inFlight = new Map<Locale, Promise<void>>();
 
 async function fetchDicts(locale: Locale): Promise<LocaleDicts> {
-  if (locale === 'zh') {
+  if (locale === 'zh' || locale === 'zh-TW') {
     // Chinese IS the key language, so only the data names need a table.
     const { ZH_DATA } = await import('./dict/zh');
     return { ui: EMPTY, uiFallback: EMPTY, data: ZH_DATA, dataFallback: EMPTY };

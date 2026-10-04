@@ -15,7 +15,6 @@ import { kvSet } from '../persist/sharedKv';
 import { saveAutomaticVersion } from '../persist/versionStore';
 import type { AgentContext } from './context';
 import { ExternalBridgeRuntime, type ExternalBridgeBinding } from './external-bridge-runtime';
-import { loadRecoveredAgentSession } from './useAgentPersistence';
 import { revisionOf } from './external-edit-session';
 
 const base = docFromTimeline({ ...INITIAL, items: [] });
@@ -104,7 +103,6 @@ assert.equal(
   'cancelled',
   'disconnect cancels orphaned pending approvals instead of restoring an allowance',
 );
-await loadRecoveredAgentSession(projectId, () => true);
 const preservedRun = (await loadAgentRuntimeSidecar(projectId)).runs
   .find((run) => run.runId === persistedDraft.agentRunId);
 assert.equal(preservedRun?.status, 'running',

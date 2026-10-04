@@ -1,5 +1,5 @@
 import { theme } from '../theme';
-import { UpstreamUpdateNotice } from '../ui/UpstreamUpdateNotice';
+import { UI_FONT } from '../branding';
 import { DesktopWindowControls } from './DesktopWindowControls';
 import {
   DashboardContent,
@@ -12,9 +12,8 @@ export function Dashboard(props: DashboardProps) {
   const model = useDashboardModel(props);
   const isMacDesktop = window.openChatCutDesktop?.platform === 'darwin';
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: theme.bg, color: theme.text, fontFamily: 'Geist, system-ui, -apple-system, sans-serif' }}>
-      <UpstreamUpdateNotice />
-      <header className={`cc-window-titlebar${isMacDesktop ? ' cc-window-titlebar--mac' : ''}`} style={{ position: 'relative', height: 48, flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 10, padding: '0 24px', borderBottom: `0.5px solid ${theme.border}`, background: theme.panel }}>
+    <div className="floade-shell floade-dashboard" style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: theme.bg, color: theme.text, fontFamily: UI_FONT }}>
+      <header className={`cc-window-titlebar${isMacDesktop ? ' cc-window-titlebar--mac' : ''}`} style={{ position: 'relative', height: 62, flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 10, padding: '0 24px', borderBottom: `0.5px solid ${theme.border}`, background: theme.bg }}>
         <DesktopWindowControls />
         <DashboardTitlebarContent model={model} />
       </header>

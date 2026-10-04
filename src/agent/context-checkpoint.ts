@@ -1,4 +1,5 @@
-import type { ModelMessage } from 'ai';
+// Read-only validation of checkpoint records saved by older project versions.
+// These records are never assembled into a model request.
 
 const CHECKPOINT_MARKER_OPEN = '<openchatcut_checkpoint>';
 const CHECKPOINT_MARKER_CLOSE = '</openchatcut_checkpoint>';
@@ -71,7 +72,8 @@ export function formatContextCheckpointMessage(
   return `${CHECKPOINT_SUMMARY_PREFIX}${summary}\n\n${formatContextCheckpointMarker(linkage)}`;
 }
 
-function checkpointMessageText(message: ModelMessage): string | null {
+function checkpointMessageText(message: unknown): string | null {
+  if (!message || typeof message !== 'object' || !('role' in message) || !('content' in message)) return null;
   if (message.role !== 'assistant') return null;
   if (typeof message.content === 'string') return message.content;
   if (!Array.isArray(message.content)) return null;
@@ -107,7 +109,7 @@ function parseMarkerPayload(payload: string): ContextCheckpointMarker {
 }
 
 /** Parse one explicitly selected checkpoint slot; callers must not scan model-visible history. */
-export function parseContextCheckpointMarker(message: ModelMessage): ContextCheckpointMarker | null {
+export function parseContextCheckpointMarker(message: unknown): ContextCheckpointMarker | null {
   const text = checkpointMessageText(message);
   if (text === null) return null;
   const start = text.lastIndexOf(CHECKPOINT_MARKER_OPEN);
@@ -126,7 +128,7 @@ export function parseContextCheckpointMarker(message: ModelMessage): ContextChec
 }
 
 export function verifyContextCheckpointMarker(
-  message: ModelMessage,
+  message: unknown,
   persisted: ContextCheckpointLinkage | undefined,
 ): ContextCheckpointMarker | null {
   const marker = parseContextCheckpointMarker(message);
@@ -140,7 +142,7 @@ export function verifyContextCheckpointMarker(
   return marker;
 }
 
-function checkpointSummary(message: ModelMessage): string {
+function checkpointSummary(message: unknown): string {
   const text = checkpointMessageText(message);
   const marker = text?.lastIndexOf(`\n\n${CHECKPOINT_MARKER_OPEN}`) ?? -1;
   if (text === null || !text.startsWith(CHECKPOINT_SUMMARY_PREFIX)
@@ -152,7 +154,7 @@ function checkpointSummary(message: ModelMessage): string {
 
 /** Sidecar rows reserve index zero and make the complete runtime marker mandatory. */
 export async function verifyCanonicalContextCheckpoint(
-  messages: readonly ModelMessage[],
+  messages: readonly unknown[],
   checkpoints: readonly PersistedContextCheckpoint[],
   loadSourceArtifact: (
     sourceArtifactId: string,

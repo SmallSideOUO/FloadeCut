@@ -32,6 +32,8 @@ async function sendFile(req: IncomingMessage, res: ServerResponse, file: string)
   } catch {
     return false;
   }
+  // Always reload the app entry document after a local rebuild or update.
+  if (file.endsWith('.html')) res.setHeader('Cache-Control', 'no-store');
   // The media class extension is handed over to serveDiskFile (its MIME table has been covered and has Range support)
   if (mimeFor(file) !== 'application/octet-stream') {
     await serveDiskFile(req, res, file);

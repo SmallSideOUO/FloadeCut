@@ -4,7 +4,6 @@
 // Exception for the error line: it is also written by the "Turn on captions" button outside the menu (there is no text script for this track), so it is passed in by Timeline.
 import { useEffect, useState } from 'react';
 import { CAPTION_STYLES } from './styles';
-import { buildTranslation } from './translate';
 import type { CaptionsData, CaptionTemplate } from './types';
 import { deleteCaptionPreset, listCaptionPresets, saveCaptionPreset, type CaptionPreset } from './presetStore';
 import { captionsOnTrack, type TimelineState, type TrackId } from '../editor/types';
@@ -15,7 +14,6 @@ import { newManualCaptions } from './manualCaptions';
 import { captionTemplatePatch } from './captionTemplatePatch';
 import { MenuDrillHeader } from '../components/timeline/MenuDrillHeader';
 
-const CAPTION_LANGS = ['English', '日本語', '한국어', 'Español', 'Français', 'Deutsch', 'Português'];
 
 interface CaptionStyleMenuProps {
   state: TimelineState;
@@ -29,12 +27,10 @@ interface CaptionStyleMenuProps {
   initialTranslateOpen?: boolean;
 }
 
-export function CaptionStyleMenu({ state, commands, trackId, pos, error, onError, onClose, onBack, initialTranslateOpen = false }: CaptionStyleMenuProps) {
+export function CaptionStyleMenu({ state, commands, trackId, pos, error, onError, onClose, onBack }: CaptionStyleMenuProps) {
   const t = useT();
   const [presets, setPresets] = useState<CaptionPreset[]>([]);
   const [nameDraft, setNameDraft] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [translateOpen, setTranslateOpen] = useState(initialTranslateOpen);
   const current = captionsOnTrack(state, trackId);
   useEffect(() => {
     void listCaptionPresets().then(setPresets).catch(() => {});
@@ -90,37 +86,7 @@ export function CaptionStyleMenu({ state, commands, trackId, pos, error, onError
     onError(null);
     onClose();
   };
-  const translate = async (lang: string) => {
-    if (busy) return;
-    const captions = captionsForTrack(state, trackId);
-    if (!captions) { onError(t('该轨道还没有可翻译的文字稿，请先完成转写')); return; }
-    setBusy(true);
-    onError(null);
-    try {
-      const { cues, fingerprint } = await buildTranslation(captions, state.items, state.fps, lang);
-      const patch = {
-        enabled: true, bilingual: true, translationLang: lang,
-        translation: cues, translationFingerprint: fingerprint,
-      };
-      if (current) commands.updateCaptions(patch, trackId);
-      else commands.setCaptions({ ...captions, ...patch }, trackId);
-      onClose();
-    } catch (err) {
-      onError(err instanceof Error ? err.message : t('字幕翻译失败'));
-    } finally { setBusy(false); }
-  };
-
   const backToParent = onBack ?? onClose;
-  if (translateOpen) return (
-    <div className="cc-caption-style-menu" style={{ position: 'fixed', left: pos.left, top: pos.top }} onPointerDown={(e) => e.stopPropagation()}>
-      <MenuDrillHeader title={t('翻译')} onBack={() => initialTranslateOpen ? backToParent() : setTranslateOpen(false)} />
-      <div className="cc-caption-language-menu is-drill">
-        {CAPTION_LANGS.map((lang) => <button type="button" key={lang} disabled={busy} onClick={() => void translate(lang)}>{lang}</button>)}
-      </div>
-      {busy && <div className="cc-caption-style-status">{t('翻译中...')}</div>}
-      {error && <div className="cc-caption-style-error">{error}</div>}
-    </div>
-  );
 
   return (
     <div className="cc-caption-style-menu" style={{ position: 'fixed', left: pos.left, top: pos.top }} onPointerDown={(e) => e.stopPropagation()}>
@@ -178,11 +144,7 @@ export function CaptionStyleMenu({ state, commands, trackId, pos, error, onError
           {t('＋ 保存当前样式...')}
         </button>
       )}
-      <div className="cc-caption-translate-wrap">
-        <button type="button" className="cc-caption-translate" disabled={busy} onClick={() => setTranslateOpen(true)} aria-expanded={translateOpen}>
-          <span>{t('文A')}</span><span>{busy ? t('翻译中...') : t('翻译字幕')}</span><span>›</span>
-        </button>
-      </div>
+
       {error && <div className="cc-caption-style-error">{error}</div>}
     </div>
   );

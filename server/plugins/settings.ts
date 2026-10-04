@@ -1,7 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Plugin } from 'vite';
-import { keyStatus, setKeys } from '../keystore.ts';
-import { runProbe } from '../key-probes.ts';
+import { getKey, setKeys } from '../keystore.ts';
 import {
   checkMediaDir,
   DEFAULT_UPLOAD_DIR,
@@ -84,14 +83,14 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
  * Only the server knows, so it is returned to the front-end along with the settings (non-key, can be disclosed). */
 function settingsBody(restartRequired = false) {
   const profile = runtimeProfile();
-  const status = keyStatus();
+
   const configured = readDataDirPointer() ?? '';
   return {
-    ...status,
+
     // The storage root is configuration, not a credential: echo it raw so the
     // settings field shows where projects actually live. It is not a keystore
     // key (the keystore lives inside the root), hence the explicit merge.
-    models: { ...status.models, [DATA_DIR_ENV]: configured },
+    settings: { UI_LOCALE: getKey("UI_LOCALE"), [DATA_DIR_ENV]: configured },
     mediaDir: uploadDir(),
     dataDir: profile.rootDir,
     ...(restartRequired ? { restartRequired: true } : {}),
@@ -142,27 +141,24 @@ async function applyDataDirChange(
   await writeDataDirPointer(target);
 }
 
+export function assertEditorSettingsPatch(patch: Readonly<Record<string, unknown>>): void {
+  const allowed = new Set(['UI_LOCALE', 'MEDIA_DIR', DATA_DIR_ENV]);
+  if (Object.keys(patch).some((key) => !allowed.has(key))) throw new Error('unsupported editor setting');
+  if (patch.UI_LOCALE !== undefined && !['zh-TW', 'zh', 'en', 'it', 'ru'].includes(String(patch.UI_LOCALE))) throw new Error('invalid interface language');
+}
+
 export function settingsPlugin(): Plugin {
   return {
     name: 'openchatcut-settings',
     configureServer(server) {
-      server.middlewares.use('/api/keys', async (req, res) => {
+      server.middlewares.use('/api/settings', async (req, res) => {
         try {
           if (req.method === 'GET') { sendJson(res, 200, settingsBody()); return; }
-          // POST /api/keys/test: "Test connection" detection. overrides = unsaved temporary values of the panel,
-          // Only this detection takes effect and does not fall into keystore / .env.local; the result will never contain the key value.
-          if (req.method === 'POST' && req.url === '/test') {
-            const body = await readBody(req);
-            const page = typeof body.page === 'string' ? body.page : '';
-            const overrides = body.overrides && typeof body.overrides === 'object' && !Array.isArray(body.overrides)
-              ? body.overrides as Record<string, unknown>
-              : {};
-            sendJson(res, 200, await runProbe(page, overrides));
-            return;
-          }
+          if (req.url && req.url !== '/' && !req.url.startsWith('?')) { sendJson(res, 404, { error: 'not found' }); return; }
           if (req.method === 'POST') {
             const profile = runtimeProfile();
             const patch = await readBody(req);
+            assertEditorSettingsPatch(patch);
             assertProfileSensitiveSettingsPatch(patch, profile);
             // The storage root is not a keystore key (the keystore lives inside
             // it): handle and strip it before setKeys sees the patch.

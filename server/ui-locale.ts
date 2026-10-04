@@ -6,13 +6,15 @@
 // non-secret UI_LOCALE setting (src/i18n/localeSync.ts), so every server message can ask
 // here instead of guessing. Unset means the app's original Chinese.
 import { getKey } from './keystore.ts';
+import { toTraditionalUi } from '../src/i18n/traditional.ts';
 
-export type UiLocale = 'zh' | 'en' | 'it' | 'ru';
+export type UiLocale = 'zh-TW' | 'zh' | 'en' | 'it' | 'ru';
 
 const LOCALES: ReadonlySet<string> = new Set(['zh', 'en', 'it', 'ru']);
 
 export function parseUiLocale(value: unknown): UiLocale | null {
   const tag = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  if (tag === 'zh-tw' || tag === 'zh-hant' || tag === 'zh-hant-tw') return 'zh-TW';
   return LOCALES.has(tag) ? (tag as UiLocale) : null;
 }
 
@@ -22,6 +24,7 @@ export function uiLocale(): UiLocale {
 
 /** Pick the variant for the current interface language; Italian falls back to English when not provided. */
 export function localized<T>(variants: { zh: T; en: T; ru?: T; it?: T }, locale: UiLocale = uiLocale()): T {
+  if (locale === 'zh-TW') return (typeof variants.zh === 'string' ? toTraditionalUi(variants.zh) : variants.zh) as T;
   if (locale === 'zh') return variants.zh;
   if (locale === 'ru') return variants.ru ?? variants.en;
   if (locale === 'it') return variants.it ?? variants.en;

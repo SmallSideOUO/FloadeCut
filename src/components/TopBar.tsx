@@ -2,7 +2,6 @@ import { lazy, Suspense, useState, useEffect } from 'react';
 import { theme } from '../theme';
 import { Icon } from './icons';
 import { ExportHistory } from './ExportHistory';
-import { GenerationActivity } from './GenerationActivity';
 import { SkinPicker } from './settings/SkinPicker';
 import { loadMcpGuideDialog } from './settings/mcpGuideLoader';
 import { ALL_LOCALES, getLocale, setLocale, useT } from '../i18n/locale';
@@ -16,24 +15,20 @@ import { TopBarIconButton } from './TopBarIconButton';
 // through the thunk for either to be split.
 const McpGuideDialog = lazy(() => loadMcpGuideDialog().then((m) => ({ default: m.McpGuideDialog })));
 
-// Language switching: The text pill displays the current language; clicking
-// cycles through the supported locales. First run defaults to the
-// system language (or English) — see i18n/locale.ts.
+// Keep every supported language directly selectable. Floade defaults to Traditional Chinese.
 export function LocaleToggle() {
   const t = useT();
   const locale = getLocale();
-  const next = ALL_LOCALES[(ALL_LOCALES.indexOf(locale) + 1) % ALL_LOCALES.length]!;
+  const labels = { 'zh-TW': t('繁體中文'), zh: t('简体中文'), en: 'English', it: 'Italiano', ru: 'Русский' };
   return (
-    <button
-      className="cc-tip cc-tip-r"
+    <select
+      className="floade-language cc-tip cc-tip-r"
       data-tip={t('切换界面语言')}
       aria-label={t('切换界面语言')}
-      onClick={() => setLocale(next)}
-      style={{ minWidth: 30, height: 22, background: 'none', border: `0.5px solid ${theme.border}`, borderRadius: 4, cursor: 'pointer', padding: '0 5px', fontSize: 11, fontWeight: 600, letterSpacing: 0.3, color: theme.textDim, display: 'grid', placeItems: 'center' }}
-      onMouseEnter={(e) => { e.currentTarget.style.color = theme.text; e.currentTarget.style.background = theme.panelAlt; }}
-      onMouseLeave={(e) => { e.currentTarget.style.color = theme.textDim; e.currentTarget.style.background = 'none'; }}>
-      {locale === 'zh' ? '中' : locale.toUpperCase()}
-    </button>
+      value={locale}
+      onChange={(event) => setLocale(event.target.value as typeof locale)}>
+      {ALL_LOCALES.map((value) => <option key={value} value={value}>{labels[value]}</option>)}
+    </select>
   );
 }
 
@@ -44,12 +39,11 @@ interface TopBarProps {
   canRedo: boolean;
   exporting?: boolean;
   exportJobCount?: number;
-  onResumeGeneration?: () => Promise<void>;
   onHome?: () => void;
   onRename?: (name: string) => void;
 }
 
-export function TopBar({ projectId, projectName, canUndo, canRedo, exporting, exportJobCount = 0, onHome, onRename, onResumeGeneration }: TopBarProps) {
+export function TopBar({ projectName, canUndo, canRedo, exporting, exportJobCount = 0, onHome, onRename }: TopBarProps) {
   const t = useT();
   const isMacDesktop = window.openChatCutDesktop?.platform === 'darwin';
   const [editing, setEditing] = useState(false);
@@ -91,10 +85,8 @@ export function TopBar({ projectId, projectName, canUndo, canRedo, exporting, ex
       <TopBarIconButton icon="redo" label={t('重做')} onClick={() => invokeAction('redo', undefined, 'toolbar')} disabled={!canRedo} />
       <TopBarIconButton icon="keyboard" label={t('编辑快捷键')} onClick={() => invokeAction('keyboard-shortcuts', undefined, 'toolbar')} />
       <TopBarIconButton icon="plug" label={t('外部 Agent 接入 (MCP)')} onClick={() => setMcpOpen(true)} />
-      <span id="cc-agent-change-log-slot" style={{ display: 'contents' }} />
       <TopBarIconButton icon="palette" label={t('设计风格(品牌)')} onClick={() => invokeAction('open-design', undefined, 'toolbar')} />
       <SkinPicker />
-      <GenerationActivity projectId={projectId} onResume={onResumeGeneration} />
       <TopBarIconButton icon="history" label={t('历史版本')} onClick={() => invokeAction('open-history', undefined, 'toolbar')} />
       {/* self-contained: trigger + popover, global export history, zero props */}
       <ExportHistory />
@@ -107,7 +99,6 @@ export function TopBar({ projectId, projectName, canUndo, canRedo, exporting, ex
         style={{ minWidth: 58, height: 26, background: theme.accent, color: theme.onAccent, border: 'none', borderRadius: 2, padding: '0 8px', fontSize: 12, fontWeight: 600, cursor: 'pointer', marginLeft: 4 }}>
         {exporting ? t('{n} 个导出', { n: Math.max(1, exportJobCount) }) : t('导出')}
       </button>
-      <div title={t('账户')} style={{ width: 20, height: 20, borderRadius: '50%', marginLeft: 2, background: 'conic-gradient(from 210deg, #6d6cff, #ff5f9e, #ffb35f, #6d6cff)', flexShrink: 0 }} />
       </div>
       {/* No fallback: a dialog that is still loading shows nothing, exactly as it
           did before it was opened — the same treatment the other overlays get. */}

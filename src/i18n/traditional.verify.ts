@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import { ensureLocaleDict, localeLanguageName, localizedCatalogText, setLocale, t, tData } from './locale';
+
+setLocale('zh-TW');
+await ensureLocaleDict('zh-TW');
+assert.equal(t('视频工程时间线'), '影片專案時間軸');
+assert.equal(t('皮肤'), '主題');
+assert.equal(t('去设置配置'), '開啟設定');
+assert.equal(t('围绕卖点组织脚本和镜头'), '圍繞賣點編排腳本和鏡頭');
+assert.equal(t('设置 · API 密钥'), '設定 · API 金鑰');
+assert.equal(t('展开 OpenChatCut Agent'), '展開 Floade Agent');
+assert.equal(t('打开 {name}', { name: '视频工程.mp4' }), '開啟 视频工程.mp4', 'user filenames must not be converted');
+assert.equal(tData('用户的视频'), '用户的视频', 'unknown user data remains untouched');
+assert.equal(localeLanguageName('zh-TW'), 'Traditional Chinese');
+assert.equal(localizedCatalogText('Timeline', '时间线', 'zh-TW'), '時間軸');
+setLocale('en');
+await ensureLocaleDict('en');
+assert.equal(t('主题'), 'Theme');
+setLocale('zh');
+assert.equal(t('视频工程时间线'), '视频工程时间线', 'Simplified Chinese remains selectable');
+console.log('traditional.verify: Traditional UI, model language and user content boundaries pass');

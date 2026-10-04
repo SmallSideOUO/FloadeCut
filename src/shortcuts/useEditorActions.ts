@@ -19,7 +19,6 @@ interface EditorActionDeps {
   openHistory: () => void;
   openShortcuts: () => void;
   toggleLayout: () => void;
-  focusAgent: () => void;
   selectAll: () => void;
 }
 
@@ -139,7 +138,6 @@ function viewActions(deps: EditorActionDeps): ActionBindings {
     'open-design': () => deps.openDesign(),
     'open-history': () => deps.openHistory(),
     'toggle-layout': () => deps.toggleLayout(),
-    'ask-ai': () => deps.focusAgent(),
   };
 }
 

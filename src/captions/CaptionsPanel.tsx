@@ -6,7 +6,6 @@ import { trackTitle, type TranscriptTrackOption } from '../transcript/trackOptio
 import { msToFrame } from '../transcript/types';
 import { CaptionsControls } from './CaptionsControls';
 import { newManualCaptions } from './manualCaptions';
-import { buildTranslation } from './translate';
 import type { CaptionsData } from './types';
 
 interface Props {
@@ -27,13 +26,12 @@ export function CaptionsPanel(props: Props) {
   }, [captionTrack, captionTracks]);
   const update = (patch: Partial<CaptionsData>) => onUpdateCaptions(patch, captionTrack ?? undefined);
   const set = (next: CaptionsData | null) => onSetCaptions(next, captionTrack ?? undefined);
-  const translation = useCaptionTranslation(captions, items, fps, update);
   return (
     <div className="cc-captions-workspace">
       <div className="cc-captions-context">
         <CaptionTrackBar options={captionTracks} track={captionTrack} onChange={setCaptionTrack} />
       </div>
-      <CaptionsControls captionTrackId={captionTrack ?? undefined} captions={captions} sourceVariants={(captions?.sourceItemId ? items.find((item) => item.id === captions.sourceItemId)?.variants : undefined) ?? []} items={items} fps={fps} onSeekMs={(ms) => playerRef.current?.seekTo(msToFrame(ms, fps))} onCreateManual={() => set(newManualCaptions())} getPlayheadMs={() => ((playerRef.current?.getCurrentFrame() ?? 0) / fps) * 1000} onUpdate={update} onRemove={() => set(null)} onTranslate={translation.run} translating={translation.running} translateError={translation.error} />
+      <CaptionsControls captionTrackId={captionTrack ?? undefined} captions={captions} sourceVariants={(captions?.sourceItemId ? items.find((item) => item.id === captions.sourceItemId)?.variants : undefined) ?? []} items={items} fps={fps} onSeekMs={(ms) => playerRef.current?.seekTo(msToFrame(ms, fps))} onCreateManual={() => set(newManualCaptions())} getPlayheadMs={() => ((playerRef.current?.getCurrentFrame() ?? 0) / fps) * 1000} onUpdate={update} onRemove={() => set(null)} />
     </div>
   );
 }
@@ -49,26 +47,4 @@ function CaptionTrackBar({ options, track, onChange }: { options: Props['caption
       </select>
     </div>
   );
-}
-
-function useCaptionTranslation(captions: CaptionsData | null, items: TimelineItem[], fps: number, onUpdate: (patch: Partial<CaptionsData>) => void) {
-  const [running, setRunning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const run = async (lang: string) => {
-    if (!captions || running) return;
-    setRunning(true);
-    setError(null);
-    try {
-      const { cues, fingerprint } = await buildTranslation(captions, items, fps, lang);
-      onUpdate({
-        bilingual: true, translationLang: lang, translation: cues,
-        translationFingerprint: fingerprint,
-      });
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
-    } finally {
-      setRunning(false);
-    }
-  };
-  return { running, error, run };
 }

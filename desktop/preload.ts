@@ -19,28 +19,6 @@ import {
   type DesktopUpdateState,
 } from '../shared/desktop-update.ts';
 import {
-  DESKTOP_INFERENCE_CHANNELS,
-  isDesktopAsrResponse,
-  isDesktopClapResponse,
-  isDesktopInferenceCapabilities,
-  isDesktopInferenceProgress,
-  isDesktopModelLoadResponse,
-  isDesktopSemanticResponse,
-  isDesktopRhythmResponse,
-  type DesktopAsrPreloadRequest,
-  type DesktopAsrRequest,
-  type DesktopAsrResponse,
-  type DesktopClapRequest,
-  type DesktopClapResponse,
-  type DesktopInferenceCapabilities,
-  type DesktopInferenceProgress,
-  type DesktopModelLoadResponse,
-  type DesktopSemanticRequest,
-  type DesktopSemanticResponse,
-  type DesktopRhythmRequest,
-  type DesktopRhythmResponse,
-} from '../shared/desktop-inference.ts';
-import {
   AGENT_PATH_IMPORT_CHANNEL,
   DIRECTORY_IMPORT_CHANNELS,
   isDirectoryImportEvent,
@@ -69,17 +47,6 @@ export interface DesktopUpdateApi {
   download(): Promise<DesktopUpdateState>;
   install(): Promise<DesktopUpdateState>;
   subscribe(listener: (state: DesktopUpdateState) => void): () => void;
-}
-export interface DesktopInferenceApi {
-  getCapabilities(): Promise<DesktopInferenceCapabilities>;
-  setEnabled(enabled: boolean): Promise<void>;
-  preloadAsr(request: DesktopAsrPreloadRequest): Promise<DesktopModelLoadResponse>;
-  transcribe(request: DesktopAsrRequest): Promise<DesktopAsrResponse>;
-  semantic(request: DesktopSemanticRequest): Promise<DesktopSemanticResponse>;
-  clap(request: DesktopClapRequest): Promise<DesktopClapResponse>;
-  rhythm(request: DesktopRhythmRequest): Promise<DesktopRhythmResponse>;
-  cancel(requestId: string): Promise<void>;
-  subscribeProgress(listener: (progress: DesktopInferenceProgress) => void): () => void;
 }
 
 
@@ -116,7 +83,7 @@ export interface OpenChatCutDesktopApi {
   projectStore(request: ProjectStoreRequest): Promise<ProjectStoreResponse>;
   editorCredentials(): Promise<EditorBootstrapInfo>;
   updates: DesktopUpdateApi;
-  inference: DesktopInferenceApi;
+
 }
 
 const localMediaPreloadDependencies: LocalMediaPreloadDependencies<File> = {
@@ -204,49 +171,6 @@ const api: OpenChatCutDesktopApi = {
     ipcRenderer.invoke(PROJECT_STORE_CHANNEL, request) as Promise<ProjectStoreResponse>,
   editorCredentials: () =>
     ipcRenderer.invoke(EDITOR_CREDENTIALS_CHANNEL) as Promise<EditorBootstrapInfo>,
-  inference: {
-    setEnabled: (enabled) =>
-      ipcRenderer.invoke(DESKTOP_INFERENCE_CHANNELS.setEnabled, enabled) as Promise<void>,
-    getCapabilities: async () => {
-      const value: unknown = await ipcRenderer.invoke(DESKTOP_INFERENCE_CHANNELS.capabilities);
-      if (!isDesktopInferenceCapabilities(value)) throw new Error('invalid desktop inference capabilities');
-      return value;
-    },
-    preloadAsr: async (request) => {
-      const value: unknown = await ipcRenderer.invoke(DESKTOP_INFERENCE_CHANNELS.preloadAsr, request);
-      if (!isDesktopModelLoadResponse(value)) throw new Error('invalid desktop ASR preload response');
-      return value;
-    },
-    transcribe: async (request) => {
-      const value: unknown = await ipcRenderer.invoke(DESKTOP_INFERENCE_CHANNELS.transcribe, request);
-      if (!isDesktopAsrResponse(value)) throw new Error('invalid desktop ASR response');
-      return value;
-    },
-    semantic: async (request) => {
-      const value: unknown = await ipcRenderer.invoke(DESKTOP_INFERENCE_CHANNELS.semantic, request);
-      if (!isDesktopSemanticResponse(value)) throw new Error('invalid desktop semantic response');
-      return value;
-    },
-    clap: async (request) => {
-      const value: unknown = await ipcRenderer.invoke(DESKTOP_INFERENCE_CHANNELS.clap, request);
-      if (!isDesktopClapResponse(value)) throw new Error('invalid desktop CLAP response');
-      return value;
-    },
-    rhythm: async (request) => {
-      const value: unknown = await ipcRenderer.invoke(DESKTOP_INFERENCE_CHANNELS.rhythm, request);
-      if (!isDesktopRhythmResponse(value)) throw new Error('invalid desktop rhythm response');
-      return value;
-    },
-    cancel: (requestId) =>
-      ipcRenderer.invoke(DESKTOP_INFERENCE_CHANNELS.cancel, requestId) as Promise<void>,
-    subscribeProgress: (listener) => {
-      const handleProgress = (_event: IpcRendererEvent, value: unknown): void => {
-        if (isDesktopInferenceProgress(value)) listener(value);
-      };
-      ipcRenderer.on(DESKTOP_INFERENCE_CHANNELS.progress, handleProgress);
-      return () => { ipcRenderer.removeListener(DESKTOP_INFERENCE_CHANNELS.progress, handleProgress); };
-    },
-  },
   updates: {
     getState: () => invokeDesktopUpdate(DESKTOP_UPDATE_CHANNELS.getState),
     check: (source) => invokeDesktopUpdate(DESKTOP_UPDATE_CHANNELS.check, source),

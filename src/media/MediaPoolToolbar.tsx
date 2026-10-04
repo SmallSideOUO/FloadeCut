@@ -8,11 +8,9 @@ import {
   type RefObject,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { MusicAutoAnalysisPreference } from '../audio/intelligence/MusicAnalysisBadge';
 import { Icon } from '../components/icons';
 import type { MediaAsset } from '../editor/types';
 import { useT } from '../i18n/locale';
-import { SemanticSearchControls } from './semantic-search/SemanticSearchControls';
 import type { SemanticMatch } from './semantic-search/types';
 import type { MediaSortKey, MediaTypeFilter } from './mediaPoolFilter';
 import { mediaViewToggleLabel } from './mediaView';
@@ -135,7 +133,6 @@ export function MediaPoolToolbar(props: MediaPoolToolbarProps) {
         <Icon name="search" size={16} />
         <input aria-label={t('搜索素材')} value={props.query} onChange={(event) => props.onQueryChange(event.target.value)} placeholder={t('搜索')} />
       </label>
-      <SemanticSearchControls scopeId={props.scopeId} assets={props.assets} onResultsChange={props.onSemanticResults} openRequest={props.semanticOpenRequest} />
       <button className="cc-media-icon cc-tip" aria-label={t('上传素材')} data-tip={t('上传素材')} disabled={props.busy} onClick={props.onUpload}><Icon name="upload" size={19} /></button>
       {props.busy && props.uploadRatio != null && <span className="cc-media-upload-pct" title={t('上传中')}>{Math.round(props.uploadRatio * 100)}%</span>}
       <button className="cc-media-icon cc-tip" aria-label={t(mediaViewToggleLabel(props.view))} data-tip={t(mediaViewToggleLabel(props.view))} onClick={props.onViewChange}><Icon name={props.view === 'grid' ? 'list' : 'grid'} size={19} /></button>
@@ -216,7 +213,6 @@ function ActionsMenu(props: MenuProps) {
       watchBusy={props.watchBusy}
       run={(action) => run(action)}
     />
-    <MusicAutoAnalysisPreference />
   </div>;
   return (
     <div className="cc-media-menu-anchor">

@@ -43,7 +43,7 @@ export function Timeline(props: TimelineProps) {
     duckMenu, setDuckMenu, captionError, setCaptionError,
     moveCaptionCue, openCaptionTrackMenu, openDuckTrackMenu,
     closeTrackDrillMenu, backFromTrackDrillMenu, recorder, toggleCaptions,
-    pickMode, addSelectionToChat, ctxMenu, setCtxMenu, fxClip, setFxClip, clipJob, setClipJob,
+    pickMode, ctxMenu, setCtxMenu, fxClip, setFxClip, clipJob, setClipJob,
     beginRelink, relinkFile, beginTrackInsert, insertTrackFiles, exportMg, convertToVideo,
     innerW, visibleWindow, rowHeightOf, tracksHeight,
     majorFrames, minorFrames, minorTicksPerMajor, rulerSpanFrames,
@@ -194,16 +194,6 @@ The playhead line/triangle is pointerEvents:none, click it to click the ruler - 
                   isOverChatComposer={(clientX, clientY) => {
                     const composer = document.querySelector<HTMLElement>('[data-cc-chat-composer]');
                     return composer ? isTimelineDragOverChat(clientX, clientY, composer.getBoundingClientRect()) : false;
-                  }}
-                  onAddSelectionToChat={(selection) => {
-                    const itemsById = new Map(state.items.map((item) => [item.id, item]));
-                    addSelectionToChat({
-                      items: selection.itemIds.flatMap((id) => {
-                        const item = itemsById.get(id);
-                        return item ? [item] : [];
-                      }),
-                      captions: selection.captionSelections,
-                    });
                   }}
                   onTrackContextMenu={(menu) => {
                     setCtxMenu(null);
@@ -440,7 +430,6 @@ The playhead line/triangle is pointerEvents:none, click it to click the ruler - 
               playerRef.current?.seekTo(frame);
               onReviewItem?.({ itemId: target.id, frame, clientX, clientY });
             }}
-            onAddToChat={(items) => addSelectionToChat({ items, captions: [] })}
             onRelinkFile={beginRelink} />
         );
       })()}

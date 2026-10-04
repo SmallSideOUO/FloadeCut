@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import type { MusicAnalysisCardState } from '../audio/intelligence/useMusicAnalysisCards';
 import { Icon } from '../components/icons';
 import type { MediaAsset, MediaFolder } from '../editor/types';
 import { useFixedVirtualGrid } from '../hooks/useFixedVirtualGrid';
@@ -23,7 +22,6 @@ interface MediaPoolGridProps {
   selected: ReadonlySet<string>;
   missing: ReadonlySet<string>;
   usedAssetIds: ReadonlySet<string>;
-  musicAnalysis: ReadonlyMap<string, MusicAnalysisCardState>;
   assetMenu: string | null;
   canRelink: boolean;
   onOpenFolder: (id: string) => void;
@@ -218,7 +216,6 @@ function MediaVirtualRows(props: MediaPoolGridProps & ReturnType<typeof useMedia
               selectedAssetIds={[...props.selected]}
               missing={props.missing.has(entry.asset.id)}
               used={props.usedAssetIds.has(entry.asset.id)}
-              musicAnalysis={props.musicAnalysis.get(entry.asset.id)}
               canRelink={props.canRelink}
               onAdd={props.onAddAsset}
               onPointerChange={props.setPointerId}

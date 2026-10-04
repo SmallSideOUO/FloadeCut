@@ -4,14 +4,13 @@
 import { useIdlePrefetch } from '../../ui/idlePrefetch';
 import { loadMcpGuideDialog } from '../settings/mcpGuideLoader';
 
-export const loadSettingsDialog = () => import('../settings/SettingsDialog');
 export const loadShortcutsDialog = () => import('../../shortcuts/ShortcutsDialog');
 export { loadMcpGuideDialog };
 export const loadMediaCleanupDialog = () => import('../../media/MediaCleanupDialog');
 export const loadStorageMigrationDialog = () => import('../settings/StorageMigrationDialog');
 
 const LOADERS = [
-  loadSettingsDialog, loadShortcutsDialog, loadMcpGuideDialog,
+  loadShortcutsDialog, loadMcpGuideDialog,
   loadMediaCleanupDialog, loadStorageMigrationDialog,
 ];
 

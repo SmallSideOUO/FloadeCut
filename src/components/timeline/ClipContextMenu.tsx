@@ -54,7 +54,7 @@ interface ClipContextMenuProps {
   onConvertToVideo: (item: TimelineItem) => void;
   onAddComment: (item: TimelineItem, frame: number, clientX: number, clientY: number) => void;
   /** Add the clicked clip or its complete multi-selection as structured AI references. */
-  onAddToChat: (items: TimelineItem[]) => void;
+  onAddToChat?: (items: TimelineItem[]) => void;
   /** Pick a local replacement for this media clip. */
   onRelinkFile: (item: TimelineItem) => void;
 }
@@ -282,11 +282,11 @@ export function ClipContextMenu({ item, transitions, x, y, playhead, commands, t
         </div>
       )}
       <Sep />
-      <Item
+      {onAddToChat && <Item
         label={batchN > 1 ? t('添加到 AI 对话框（{n}）', { n: batchN }) : t('添加到 AI 对话框')}
         icon="sparkles"
-        onClick={run(() => onAddToChat(referenceItems))}
-      />
+        onClick={run(() => onAddToChat?.(referenceItems))}
+      />}
       <Item label={t('重新链接文件')} icon="folder" disabled={!canRelink} onClick={run(() => onRelinkFile(item))} />
       <Sep />
       <Item label={t('导出 MG 动画')} icon="download" disabled={!isDom} onClick={run(() => onExportMg(item))} />

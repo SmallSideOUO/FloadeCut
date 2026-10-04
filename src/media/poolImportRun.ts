@@ -2,12 +2,10 @@
 // uploads, the finished asset that replaces it, and cleanup when it fails.
 // Its durations are counted at the rate the import started with, and every
 // write says so: the project rate can change while a file still transcodes.
-import { refreshVisualAnalysis } from '../agent/progress/visual-analysis-jobs';
 import type { EditorCommands } from '../editor/store';
 import { recountAssetDuration } from '../editor/timelineFrameRate';
 import type { MediaAsset, TimelineState } from '../editor/types';
 import type { t as translate } from '../i18n/locale';
-import { shouldAutoTranscribeIngest } from '../transcript/provider';
 import { createImportContentIdentityHooks } from './importContentIdentity';
 import { mediaAssetRelinkPatch, uploadedMediaRelinkPatch } from './mediaAssetRelink';
 import { findMediaNameConflict, MediaImportCancelledError } from './mediaImportConflict';
@@ -60,15 +58,10 @@ export function poolImportHooks(run: PoolImportRun, onProgress?: (ratio: number)
     },
     onUploaded: (info) => {
       if (!run.targetId) run.commands.relinkMediaAsset(info.id, uploadedMediaRelinkPatch(info));
-      const start = run.transcriptionGate.uploaded(info);
-      if (start && shouldAutoTranscribeIngest()) run.startAssetTranscription(start.asset, start.asrPath);
     },
     onReady: (asset, durationFps) => {
       const ready = run.targetId ? { ...asset, id: run.targetId } : asset;
       run.commands.relinkMediaAsset(ready.id, mediaAssetRelinkPatch(ready, durationFps));
-      const start = run.transcriptionGate.ready(ready);
-      if (start && shouldAutoTranscribeIngest()) run.startAssetTranscription(start.asset, start.asrPath);
-      if (ready.kind !== 'audio') refreshVisualAnalysis(ready);
     },
   };
 }

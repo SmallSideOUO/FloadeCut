@@ -1,5 +1,4 @@
 export { EXPORT_QA_TOOL_SCHEMAS, EXPORT_QA_TOOL_NAMES } from './schemas/export-qa-tools';
-import { captionFaceQaIssues } from '../../geometry/caption-qa';
 import type { AgentContext } from '../context';
 import {
   captionLayoutQaIssues,
@@ -10,7 +9,6 @@ import {
   type ExportQaReport,
 } from '../../export/quality';
 import { fetchRenderJob } from './export-tools';
-import { maybeDescribeFramesResult } from '../vision';
 
 type Args = Record<string, unknown>;
 
@@ -89,8 +87,7 @@ async function verifyExport(args: Args, ctx: AgentContext): Promise<unknown> {
     const report = mergeExportQaIssues(result.report, captionLayoutQaIssues(state));
     // Geometry-aware caption check: warns when a caption band covers the
     // speaker's face (visual geometry cache; first use analyzes the source).
-    const faceIssues = await captionFaceQaIssues(ctx.getDoc(), state);
-    const merged = faceIssues.length ? mergeExportQaIssues(report, faceIssues) : report;
+    const merged = report;
     const evidence = result.evidence;
     return {
       ok: merged.ok,
@@ -113,5 +110,5 @@ async function verifyExport(args: Args, ctx: AgentContext): Promise<unknown> {
 
 export async function execExportQaTool(name: string, args: Args, ctx: AgentContext): Promise<unknown> {
   if (name !== 'verify_export') return { error: `export QA tool not implemented: ${name}` };
-  return await maybeDescribeFramesResult(await verifyExport(args, ctx), 'qa-evidence');
+  return await verifyExport(args, ctx);
 }

@@ -14,11 +14,10 @@ import { captionContextMenuIntent, updateCaptionSelections } from './captionSele
 import {
   resolveCaptionDragSelection, selectionMovePreviewDeltaForCaption, type TimelineSelectionMovePreview,
 } from './captionGroupMove';
-import { CAPTION_CUE_TRANSLATION_LANGS, captionCueAgentSeed, captionCueText } from './captionCueMenu';
+import { captionCueAgentSeed, captionCueText } from './captionCueMenu';
 import {
   appendCaptionClipboardToTrack, createCaptionTimelineClipboard, type CaptionTimelineClipboard,
 } from './captionTimelineClipboard';
-import { translateLines } from './translate';
 import { droppedFiles, hasExternalFiles } from '../media/externalFileDrop';
 import { manualCueTargets, useCaptionTrim, useCaptionMove, useCaptionSelectionMove, type ManualCueTarget, type CaptionCueMove } from './useCaptionCueGestures';
 
@@ -115,7 +114,7 @@ export function CaptionTrackLane({
   selectedCaptions: controlledSelectedCaptions, selectedItemIds = [], selectionMovePreview = null,
   onSelectCaption, onSelectionMovePreview = () => {}, onMoveTimelineSelection = () => {},
   onUpdate, onMove, onDelete, onCopyCue, onPasteCue, onSeedChat,
-  onAddSelectionToChat, isOverChatComposer, onTranslateCue,
+  onAddSelectionToChat, isOverChatComposer,
   onDropExternalFiles, frameFromClientX, onTrackContextMenu,
 }: {
   state: TimelineState; captions: CaptionsData | null; trackId: TrackId; playheadFrame: number; px: number;
@@ -167,14 +166,10 @@ export function CaptionTrackLane({
     target: ManualCueTarget;
     selection: CaptionSelectionRef;
   } | null>(null);
-  const [translationOpen, setTranslationOpen] = useState(false);
-  const [menuBusy, setMenuBusy] = useState(false);
-  const [menuError, setMenuError] = useState<string | null>(null);
+
+
   const closeMenu = () => {
     setMenu(null);
-    setTranslationOpen(false);
-    setMenuBusy(false);
-    setMenuError(null);
   };
   useEffect(() => {
     if (!menu) return;
@@ -240,7 +235,6 @@ export function CaptionTrackLane({
       return;
     }
     if (!captions || !timelineClipboard) {
-      setMenuError(t('剪贴板里没有可粘贴的文字'));
       return;
     }
     const patch = appendCaptionClipboardToTrack(
@@ -250,28 +244,10 @@ export function CaptionTrackLane({
       Math.round(playheadFrame * 1000 / state.fps),
     );
     if (!patch) {
-      setMenuError(t('剪贴板里没有可粘贴的文字'));
       return;
     }
     onUpdate(patch);
     closeMenu();
-  };
-  const translateCue = async (target: ManualCueTarget, language: string) => {
-    if (!onTranslateCue || menuBusy) return;
-    const cue = target.words[target.index];
-    if (!cue) return;
-    setMenuBusy(true);
-    setMenuError(null);
-    try {
-      const [translated] = await translateLines([captionCueText(target)], language);
-      const text = translated?.trim();
-      if (!text) throw new Error(t('字幕翻译没有返回文字'));
-      onTranslateCue(text, cue.start, cue.end);
-      closeMenu();
-    } catch (cause) {
-      setMenuBusy(false);
-      setMenuError(cause instanceof Error ? cause.message : t('字幕翻译失败'));
-    }
   };
   return (
     <div className="cc-caption-track-lane" data-caption-selection-region="timeline" style={{
@@ -318,8 +294,6 @@ export function CaptionTrackLane({
           selectionMovePreview={selectionMovePreview}
           trim={trim} move={move} selectionMove={selectionMove} onSelect={selectCaption} onDelete={remove}
           onMenu={(event, cue, selection) => {
-            setTranslationOpen(false);
-            setMenuError(null);
             setMenu({
               x: Math.max(8, Math.min(event.clientX, window.innerWidth - 180)),
               y: Math.max(8, Math.min(event.clientY, window.innerHeight - 300)),
@@ -330,17 +304,10 @@ export function CaptionTrackLane({
       })}
       {menu && <div className="cc-caption-cue-menu" data-caption-selection-owner="cue-menu" role="menu"
         style={{ left: menu.x, top: menu.y }} onPointerDown={(event) => event.stopPropagation()}>
-        {translationOpen ? <>
-          <button type="button" role="menuitem" onClick={() => setTranslationOpen(false)}>{t('翻译')}</button>
-          {CAPTION_CUE_TRANSLATION_LANGS.map((language) => <button key={language.label} type="button" role="menuitem"
-            disabled={menuBusy} onClick={() => void translateCue(menu.target, language.label)}>
-            {language.flag} {language.label}
-          </button>)}
-        </> : <>
+        <>
           <button type="button" role="menuitem" onClick={() => void copyCue(menu.selection)}>{t('复制')}</button>
           <button type="button" role="menuitem" onClick={pasteCue}>{t('粘贴')}</button>
-          {onTranslateCue && <button type="button" role="menuitem" aria-haspopup="menu"
-            onClick={() => setTranslationOpen(true)}>{t('翻译')} ›</button>}
+
           {(onAddSelectionToChat || onSeedChat) && <button type="button" role="menuitem" onClick={() => {
             if (onAddSelectionToChat) {
               const selected = selectedCaptions.some((selection) => captionSelectionKey(selection) === captionSelectionKey(menu.selection));
@@ -356,9 +323,7 @@ export function CaptionTrackLane({
             closeMenu();
           }}>{t('添加到 AI 对话框')}</button>}
           <button type="button" role="menuitem" onClick={() => remove(menu.target)}>{t('删除')}</button>
-        </>}
-        {menuBusy && <div role="status">{t('翻译中...')}</div>}
-        {menuError && <div role="alert">{menuError}</div>}
+        </>
       </div>}
     </div>
   );

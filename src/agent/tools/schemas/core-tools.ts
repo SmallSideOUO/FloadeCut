@@ -109,49 +109,6 @@ export const CORE_TOOL_SCHEMAS: AgentToolSchema[] = [
     },
   },
   {
-    // submit_motion_graphic: sync LLM codegen + sandbox — creates the asset only
-    // (media pool), no timeline placement.
-    name: 'submit_motion_graphic',
-    description: [
-      'Submit a Motion Graphic generation job.',
-      'Creates ONE motion-graphic asset in the media pool from a brief; does NOT place it on the timeline.',
-      'After success, place with edit_item adds:[{type:"motion-graphic", assetId, trackId?, fromFrame?}].',
-      'Prefer library templates (browse_library / add_motion_graphic) when one fits; use this only for brand-new visuals.',
-      'Call only when the user clearly asked for a new MG.',
-    ].join(' '),
-    input_schema: {
-      type: 'object',
-      properties: {
-        prompt: { type: 'string', description: 'Brief of what the motion graphic should show/animate.' },
-        description: { type: 'string', description: 'Alias of prompt (local).' },
-        name: { type: 'string', description: 'Short media-pool display name.' },
-        durationSeconds: { type: 'number', minimum: 0.5, maximum: 600, description: 'Duration in seconds (default 3).' },
-        durationInFrames: { type: 'number', minimum: 15, maximum: 36000, description: 'Duration in frames (overrides durationSeconds when set).' },
-        width: { type: 'number', minimum: 16, maximum: 8192, description: 'Natural width px (default 1920).' },
-        height: { type: 'number', minimum: 16, maximum: 8192, description: 'Natural height px (default 1080).' },
-      },
-      required: ['name'],
-    },
-  },
-  {
-    // Legacy alias kept for older prompts/skills; same executor as submit_motion_graphic.
-    name: 'create_motion_graphic',
-    description: 'Alias of submit_motion_graphic (pool-only MG generation). Prefer submit_motion_graphic. Does not place on the timeline — use edit_item after.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        description: { type: 'string', description: 'What the motion graphic should show/animate.' },
-        prompt: { type: 'string', description: 'Alias of description.' },
-        name: { type: 'string', description: 'Short display name.' },
-        durationSeconds: { type: 'number', minimum: 0.5, maximum: 600, description: 'Duration in seconds (default 3).' },
-        durationInFrames: { type: 'number', minimum: 15, maximum: 36000 },
-        width: { type: 'number', minimum: 16, maximum: 8192 },
-        height: { type: 'number', minimum: 16, maximum: 8192 },
-      },
-      required: ['name'],
-    },
-  },
-  {
     name: 'clear_timeline',
     description: 'Remove ALL clips from the timeline. Only when the user clearly asks to start over / clear everything.',
     input_schema: { type: 'object', properties: {} },

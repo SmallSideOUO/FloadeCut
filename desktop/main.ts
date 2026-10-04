@@ -23,9 +23,8 @@ import {
 import { installProjectStoreIpc } from './project-store-ipc.ts';
 import { installEditorAuthIpc } from './editor-auth-ipc.ts';
 import { installDesktopUpdateIpc } from './update-ipc.ts';
-import { supportsDirectDesktopUpdates } from './update-service.ts';
-import { installDesktopInferenceIpc } from './native-inference-ipc.ts';
-import { detectDesktopHardwareProfile } from './native-hardware-profile.ts';
+import { PRODUCT_NAME } from '../src/branding.ts';
+import { localized } from '../server/ui-locale.ts';
 import { installDirectoryWatchIpc } from './directory-watch-ipc.ts';
 import {
   AGENT_IMPORT_ROOTS_KEY,
@@ -35,7 +34,6 @@ import { getKey, setKeys } from '../server/keystore.ts';
 import { AGENT_PATH_IMPORT_CHANNEL } from '../shared/directory-import.ts';
 import { AGENT_LOCAL_MEDIA_CHANNEL } from '../shared/agent-local-media.ts';
 import { browseLocalMedia } from '../server/agent-local-media.ts';
-import { modelCachePath } from '../shared/model-cache-path.ts';
 import { isTranscriptWindowPayload, TRANSCRIPT_WINDOW_CHANNELS, type TranscriptWindowPayload } from '../shared/transcript-window.ts';
 import {
   assertTrustedDesktopSenderUrl,
@@ -85,8 +83,10 @@ const DIST_DIR = app.isPackaged
   ? join(process.resourcesPath, 'dist')
   : join(fileURLToPath(new URL('..', import.meta.url)), 'dist');
 const PRELOAD_PATH = join(dirname(fileURLToPath(import.meta.url)), 'preload.cjs');
+app.setName(PRODUCT_NAME);
+if (process.platform === 'win32') app.setAppUserModelId('com.smallside.floade.video');
 
-// CC_SMOKE=1: No window smoke - start the embedded server, load the page, explore /api/keys, and return the code 0/1 according to the result.
+// CC_SMOKE=1: Start the embedded server, verify editor settings and MCP, and return the probe result.
 // CC_SMOKE_RENDER=1 adds a true rendering probe (packaged version acceptance: pre-bundled + full browser link included in the package).
 const SMOKE = process.env.CC_SMOKE === '1';
 const SMOKE_RENDER = process.env.CC_SMOKE_RENDER === '1';
@@ -149,7 +149,7 @@ function registerDesktopHandlers(trustedOrigin: string): void {
       ? requestedPath
       : app.getPath('videos');
     const options: OpenDialogOptions = {
-      title: '选择素材保存目录',
+      title: localized({ zh: '选择素材保存目录', en: 'Choose a media folder' }),
       defaultPath: requested,
       properties: ['openDirectory', 'createDirectory'],
     };
@@ -166,7 +166,7 @@ function registerDesktopHandlers(trustedOrigin: string): void {
   ipcMain.handle('openchatcut:select-export-directory', trustedDesktopHandler(trustedOrigin, async (event) => {
     const parent = BrowserWindow.fromWebContents(event.sender);
     const options: OpenDialogOptions = {
-      title: '选择导出目录',
+      title: localized({ zh: '选择导出目录', en: 'Choose an export folder' }),
       defaultPath: app.getPath('videos'),
       properties: ['openDirectory', 'createDirectory'],
     };
@@ -175,7 +175,7 @@ function registerDesktopHandlers(trustedOrigin: string): void {
       : await dialog.showOpenDialog(options);
     if (result.canceled || !result.filePaths[0]) return null;
     const directory = await validatedDirectory(result.filePaths[0]);
-    if (!directory) throw new Error('所选导出目录不可用');
+    if (!directory) throw new Error(localized({ zh: '所选导出目录不可用', en: 'The selected export folder is unavailable' }));
     const grant = createExportDirectoryGrant(directory);
     activeExportDirectory = { directory, grant };
     await persistExportDirectory(exportStatePath, directory, grant.grantId);
@@ -190,7 +190,7 @@ function registerDesktopHandlers(trustedOrigin: string): void {
     }
     const parent = BrowserWindow.fromWebContents(event.sender);
     const options: SaveDialogOptions = {
-      title: '选择导出文件',
+      title: localized({ zh: '选择导出文件', en: 'Choose an export file' }),
       defaultPath: join(app.getPath('videos'), suggestedFilename),
     };
     const result = parent
@@ -198,9 +198,9 @@ function registerDesktopHandlers(trustedOrigin: string): void {
       : await dialog.showSaveDialog(options);
     if (result.canceled || !result.filePath) return null;
     const filename = basename(result.filePath);
-    if (!validDesktopExportFilename(filename)) throw new Error('导出文件名无效');
+    if (!validDesktopExportFilename(filename)) throw new Error(localized({ zh: '导出文件名无效', en: 'Invalid export filename' }));
     const directory = await validatedDirectory(dirname(result.filePath));
-    if (!directory) throw new Error('所选导出目录不可用');
+    if (!directory) throw new Error(localized({ zh: '所选导出目录不可用', en: 'The selected export folder is unavailable' }));
     const grant = createExportDirectoryGrant(directory);
     activeExportDirectory = { directory, grant };
     await persistExportDirectory(exportStatePath, directory, grant.grantId);
@@ -328,6 +328,7 @@ function registerDesktopHandlers(trustedOrigin: string): void {
 
 async function boot(): Promise<void> {
   await app.whenReady();
+  if (process.platform !== 'darwin') Menu.setApplicationMenu(null);
   if (app.isPackaged) {
     const missing = missingRuntimeAssets(packagedRuntimeAssetChecks({
       resourcesPath: process.resourcesPath,
@@ -353,11 +354,8 @@ async function boot(): Promise<void> {
   installProjectStoreIpc(origin);
   installEditorAuthIpc(origin);
   installDesktopUpdateIpc(origin, {
-    enabled: supportsDirectDesktopUpdates({
-      packaged: app.isPackaged,
-      smoke: SMOKE,
-      platform: process.platform,
-    }),
+    // A Floade fork must never install an upstream OpenChatCut binary over itself.
+    enabled: false,
   });
   installDirectoryWatchIpc(origin);
   ipcMain.handle(AGENT_LOCAL_MEDIA_CHANNEL, trustedDesktopHandler(origin,
@@ -378,7 +376,7 @@ async function boot(): Promise<void> {
       chooseRoot: async (requestedPath) => {
         const parent = BrowserWindow.fromWebContents(event.sender);
         const options: OpenDialogOptions = {
-          title: '选择允许 Agent 访问的素材文件夹',
+          title: localized({ zh: '选择允许 Agent 访问的素材文件夹', en: 'Choose a media folder the AI assistant can access' }),
           defaultPath: agentImportPickerDefaultPath(requestedPath),
           properties: ['openDirectory'],
         };
@@ -391,13 +389,6 @@ async function boot(): Promise<void> {
       writeRoots: (roots) => setKeys({ [AGENT_IMPORT_ROOTS_KEY]: roots }),
     });
   }));
-  const hardware = await detectDesktopHardwareProfile(app);
-  const desktopInference = installDesktopInferenceIpc(
-    origin,
-    modelCachePath(app.getPath('home')),
-    hardware,
-  );
-  app.once('before-quit', () => desktopInference.dispose());
   console.log(`[desktop] ${devOrigin ? 'live source' : 'embedded server'} at ${origin}`);
 
   // A UI_SCALE saved before the shipped base changed is rebased once, so the window
@@ -414,7 +405,8 @@ async function boot(): Promise<void> {
     ...initialBounds,
     show: !SMOKE,
     backgroundColor: '#111111',
-    title: 'OpenChatCut',
+    title: PRODUCT_NAME,
+    icon: app.isPackaged ? join(DIST_DIR, 'floade-logo.png') : join(fileURLToPath(new URL('..', import.meta.url)), 'public', 'floade-logo.png'),
     ...desktopWindowFrameOptions(),
     webPreferences: {
       preload: PRELOAD_PATH,
@@ -474,7 +466,7 @@ if (hasSingleInstanceLock) {
       // A packaged double-click has no console: without this the process just
       // disappears and the user has nothing to report (issue #140).
       try {
-        dialog.showErrorBox('OpenChatCut 启动失败 / failed to start', detail);
+        dialog.showErrorBox('Floade 啟動失敗 / failed to start', detail);
       } catch {
         // A dialog is best effort; the exit below still has to happen.
       }

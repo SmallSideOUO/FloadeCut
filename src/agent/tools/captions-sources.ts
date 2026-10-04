@@ -2,7 +2,7 @@ import type { AgentContext } from '../context';
 import type { CaptionsData, CaptionSourceEntry } from '../../captions/types';
 import { resolveCaptionWords } from '../../captions/resolve';
 import { ensureEntries, matchEntries } from './captions-lanes';
-import { buildTranslation } from '../../captions/translate';
+import { captionTimingFingerprint } from '../../captions/translate';
 import { findVariantByLang } from '../../transcript/variants';
 import { resolveTrackId, trackAlias, type TimelineItem, type TimelineState } from '../../editor/types';
 import { moveCaptionSourceEntry, normalizeCaptionSourceEntries, orderedCaptionSourceEntries } from '../../captions/sourceOrder';
@@ -178,7 +178,15 @@ export async function bilingual(json: Record<string, unknown>, c: CaptionsData, 
   const lang = langArg ?? (str(json.languageCode) || str(json.lang));
   if (!lang) return { error: 'bilingual needs languageCode (the language to translate INTO)' };
   try {
-    const { cues, fingerprint } = await buildTranslation(c, s.items, s.fps, lang);
+    const raw = json.translation;
+    if (!Array.isArray(raw) || raw.length === 0 || raw.some((cue) =>
+      !cue || typeof cue !== 'object' || typeof cue.text !== 'string'
+      || !Number.isFinite(cue.start) || !Number.isFinite(cue.end)
+      || cue.start < 0 || cue.end <= cue.start)) {
+      return { error: 'Provide translation:[{start,end,text}] from the external client. Floade does not call AI models.' };
+    }
+    const cues = raw.map((cue) => ({ start: Number(cue.start), end: Number(cue.end), text: String(cue.text) }));
+    const fingerprint = captionTimingFingerprint(c, s.items, s.fps);
     ctx.commands.updateCaptions({
       translation: cues, translationLang: lang, bilingual: true,
       translationFingerprint: fingerprint,

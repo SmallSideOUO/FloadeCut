@@ -1,20 +1,17 @@
 
 import { useT } from './i18n/locale';
 import {
-  useAgentBackendSync,
+  useUiLocaleSync,
   useAppRoute,
   useProjects,
 } from './app/appShell';
 import { AppSplash, DashboardRoute, EditorRoute } from './app/AppViews';
-import { useInferenceWarmup } from './hooks/useInferenceWarmup';
 import { useUiScaleShortcuts } from './hooks/useUiScaleShortcuts';
 
 export default function App() {
   const t = useT();
   const route = useAppRoute();
-  useAgentBackendSync();
-  // No warmup where the editor can't open (insecure context, see editorAccess).
-  useInferenceWarmup(route.name === 'editor' && window.isSecureContext);
+  useUiLocaleSync();
   useUiScaleShortcuts();
   const { projects, refresh } = useProjects();
 

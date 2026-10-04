@@ -67,7 +67,7 @@ function insertMenuItem(kind: TrackKind, t: (text: string) => string): { label: 
 export function TrackContextMenu({
   kind, x, y, hidden, muted, locked, canTighten, hasContents, hasSelectable, deleteBlockedReason,
   onInsert, onTighten, onSelectAll, onClear, onToggleHidden, onToggleMuted, onToggleLocked,
-  onRename, onOpenDuck, onOpenCaptionStyle, onOpenTranslate, onDelete, onClose,
+  onRename, onOpenDuck, onOpenCaptionStyle, onDelete, onClose,
 }: TrackContextMenuProps) {
   const t = useT();
   const ref = useRef<HTMLDivElement>(null);
@@ -125,7 +125,6 @@ export function TrackContextMenu({
       {kind === 'caption' ? (
         <>
           <MenuItem label={t('字幕样式')} icon="palette" chevron onClick={open(onOpenCaptionStyle)} />
-          <MenuItem label={t('翻译全部')} icon="text" chevron onClick={open(onOpenTranslate)} />
         </>
       ) : (
         <MenuItem label={t('自动闪避')} icon="sliders" chevron onClick={open(onOpenDuck)} />

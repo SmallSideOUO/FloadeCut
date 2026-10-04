@@ -71,6 +71,17 @@ const GRAPHITE: SkinTokens = {
 // textDim/panel ≥ 4.5, onAccent/accent ≥ 4.5 (script skin-by-skin assertion, individual official grayscale
 // Fine-tune L to meet the standard). Pastel accent skin (Mocha/Arctic/Tokyo Night/Latte) onAccent uses dark fonts.
 export const SKINS: readonly SkinDef[] = [
+  {
+    id: 'floade', nameZh: 'Floade 深色',
+    tokens: {
+      ...GRAPHITE,
+      bg: '#111113', inset: '#131316', panel: '#17171a', panelAlt: '#1d1d21', hover: '#26262b',
+      border: '#29292f', borderLight: '#484850',
+      text: '#e9e9ec', textMuted: '#b7b7bd', textDim: '#92929a', textStrong: '#f7f7f8',
+      accent: '#78aef8', accentDeep: '#5b94df', accentRgb: '120,174,248', onAccent: '#111113',
+      tlTrack: '#1b1b1f', tlSidePanel: '#17171a',
+    },
+  },
   { id: 'graphite', nameZh: '石墨', tokens: GRAPHITE },
   {
     id: 'midnight', nameZh: '墨黑',
@@ -138,8 +149,8 @@ export const SKINS: readonly SkinDef[] = [
   },
 ];
 
-const STORAGE_KEY = 'cc.skin';
-export const DEFAULT_SKIN = 'graphite';
+const STORAGE_KEY = 'floade.theme';
+export const DEFAULT_SKIN = 'floade';
 
 const kebab = (name: string): string => name.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
 

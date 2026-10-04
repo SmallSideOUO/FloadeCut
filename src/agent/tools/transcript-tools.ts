@@ -1,16 +1,13 @@
 export { TRANSCRIPT_TOOL_SCHEMAS, TRANSCRIPT_TOOL_NAMES } from './schemas/transcript-tools';
 import type { AgentContext } from '../context';
 import { defaultTrackId, resolveTrackId, trackAlias, type TimelineItem, type TrackId } from '../../editor/types';
-import { transcribePath, TranscriptionError } from '../../transcript/provider';
-import { hasOperationalTranscript, isTranscriptionProviderId } from '../../transcript/types';
+import { hasOperationalTranscript } from '../../transcript/types';
 import { fillerIndices } from '../../transcript/edit';
-import { translateLines } from '../../captions/translate';
-import { createVariant, findVariantByLang, upsertVariant } from '../../transcript/variants';
+import { findVariantByLang } from '../../transcript/variants';
 import { buildSilenceGapCaps, parseCleanOnly, parseSilenceRule, type SilenceRule } from '../../transcript/clean';
 import type { Action } from '../../editor/reduce';
 import { execFindTranscript, findPhrase, normalize } from './transcript-find';
 import { execReadTranscript } from './transcript-read';
-import { execSearchMedia } from './media-search';
 
 type Args = Record<string, unknown>;
 
@@ -118,32 +115,6 @@ async function manageTranscript(args: Args, ctx: AgentContext, track: TrackId, a
   }
 
   // retry_transcription: force a fresh ASR run (the only action that doesn't need an existing transcript).
-  if (action === 'retry_transcription') {
-    if (!it.src) return { error: `item ${it.id} has no media to transcribe` };
-    // Honor the same provider override transcribe_track accepts. Without it a
-    // retry always fell back to the default provider, so on a setup configured
-    // for (say) Groq the only way to redo a transcript failed with
-    // "AssemblyAI API key is not configured" — even though the initial
-    // transcribe_track had just succeeded.
-    const provider = args.provider === undefined
-      ? undefined
-      : isTranscriptionProviderId(args.provider) ? args.provider : undefined;
-    if (args.provider !== undefined && provider === undefined) {
-      return { error: `unsupported transcription provider: ${String(args.provider)}` };
-    }
-    try {
-      const r = await transcribePath(
-        it.src,
-        (note) => { if (note) ctx.onToolProgress?.(note); },
-        {},
-        provider,
-      );
-      ctx.commands.setItemTranscript(it.id, r.words);
-      return { ok: true, action, itemId: it.id, words: r.words.length, text: r.text.slice(0, 200), retried: true };
-    } catch (e) {
-      return { error: `transcription failed: ${e instanceof Error ? e.message : String(e)}` };
-    }
-  }
 
   if (!hasOperationalTranscript(it)) return { error: `item ${it.id} has no current transcript; call transcribe_track first` };
 
@@ -241,24 +212,6 @@ async function manageTranscript(args: Args, ctx: AgentContext, track: TrackId, a
   }
 
   // translation_create (always (re)translate + overwrite) / translation_ensure (idempotent: reuse if present).
-  if (action === 'translation_create' || action === 'translation_ensure') {
-    const lang = String(args.lang ?? '').trim();
-    if (!lang) return { error: `${action} needs lang (target language, e.g. "English")` };
-    const existing = findVariantByLang(it.variants, lang, 'translation');
-    if (existing && action === 'translation_ensure') {
-      return { ok: true, action, itemId: it.id, variantId: existing.id, lang: existing.lang, words: existing.words.length, reused: true };
-    }
-    try {
-      // Each variant word is keyed by source index i; timing always comes from resolveVariantText.
-      const texts = await translateLines(it.transcript.map((w) => w.text), lang);
-      const words = texts.map((text, i) => ({ i, text }));
-      const variant = createVariant({ lang, kind: 'translation', words, id: existing?.id }); // reuse id → overwrite
-      ctx.commands.setItemVariants(it.id, upsertVariant(it.variants, variant));
-      return { ok: true, action, itemId: it.id, variantId: variant.id, lang: variant.lang, words: variant.words.length, reused: false };
-    } catch (e) {
-      return { error: `translation failed: ${e instanceof Error ? e.message : String(e)}` };
-    }
-  }
 
   return { error: `unsupported action "${action}"; use fix / clear_edits / set_play_order / retry_transcription / translation_create / translation_ensure / translation_list / translation_read` };
 }
@@ -266,51 +219,11 @@ async function manageTranscript(args: Args, ctx: AgentContext, track: TrackId, a
 // Execute a transcript/caption tool. Returns undefined if `name` isn't one of ours.
 export async function execTranscriptTool(name: string, args: Args, ctx: AgentContext): Promise<unknown | undefined> {
   if (name === 'read_transcript') return execReadTranscript(args, ctx);
-  if (name === 'search_media') return execSearchMedia(args, ctx);
   const state = ctx.getState();
   const track = resolveTrackId(state, args.track ?? 'A1') ?? defaultTrackId(state, 'audio');
   if (!track) return { error: 'no track available; create one with edit_track first' };
   const alias = trackAlias(state, track);
   switch (name) {
-    case 'transcribe_track': {
-      const provider = args.provider === undefined
-        ? undefined
-        : isTranscriptionProviderId(args.provider) ? args.provider : undefined;
-      if (args.provider !== undefined && provider === undefined) {
-        return { error: `unsupported transcription provider: ${String(args.provider)}` };
-      }
-      // Transcribe ALL audio/video clips on the track (not just the first).
-      const clips = ctx.getState().items
-        .filter((it) => (it.kind === 'audio' || it.kind === 'video') && it.track === track && it.src)
-        .sort((a, b) => a.startFrame - b.startFrame);
-      if (!clips.length) return { error: `no audio/video clip on ${alias}` };
-      const results: { itemId: string; words: number; text: string; skipped?: boolean; skippedReason?: string }[] = [];
-      try {
-        for (const it of clips) {
-          if (hasOperationalTranscript(it)) {
-            results.push({ itemId: it.id, words: it.transcript.length, text: '', skipped: true, skippedReason: 'already-transcribed' });
-            continue;
-          }
-          try {
-            const r = await transcribePath(it.src!, (note) => { if (note) ctx.onToolProgress?.(note); }, {}, provider);
-            ctx.commands.setItemTranscript(it.id, r.words);
-            results.push({ itemId: it.id, words: r.words.length, text: r.text.slice(0, 200) });
-          } catch (transcribeError) {
-            // Clips without an audio track are not transcription failures —
-            // skip and report them instead of failing the whole batch.
-            if (transcribeError instanceof TranscriptionError && transcribeError.code === 'no-audio') {
-              results.push({ itemId: it.id, words: 0, text: '', skipped: true, skippedReason: 'no-audio' });
-              continue;
-            }
-            throw transcribeError;
-          }
-        }
-        return { ok: true, track: alias, provider: provider ?? 'settings-default', clips: results.length, results };
-      } catch (e) {
-        const base = e instanceof Error ? e.message : String(e);
-        return { error: `transcription failed: ${base}`, partial: results };
-      }
-    }
     case 'find_transcript':
       // Parameter surface (asset/fuzzy/includeWordTimestamps/limit) + full project search: transcript-find.ts.
       return execFindTranscript(args, ctx);

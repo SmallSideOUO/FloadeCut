@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { PlayerRef } from '@remotion/player';
-import { enqueueVisualAnalysis } from '../agent/progress/visual-analysis-jobs';
 import { useT } from '../i18n/locale';
 import { pendingAutosaveAfterObservation, recoverFailedAutosave } from '../persist/autosaveRecovery';
-import { acknowledgeIngestedGenerationResults, resumeOpenGenerationJobs } from '../persist/jobRegistryStore';
 import {
   flushProjectSaves,
   hasPendingProjectSaves,
@@ -12,17 +10,13 @@ import {
 } from '../persist/projectStore';
 import type { ProjectSaveResult } from '../persist/projectStoreCoordinators';
 import { showAppToast } from '../ui/appToast';
-import type { EditorCommands } from './store';
-import type { ProjectDoc, TimelineState } from './types';
+import type { ProjectDoc } from './types';
 
 type MutableRef<T> = { current: T };
 
 interface EditorProjectPersistenceOptions {
   projectId: string;
   doc: ProjectDoc;
-  commands: Pick<EditorCommands, 'addAsset'>;
-  stateRef: MutableRef<TimelineState>;
-  docRef: MutableRef<ProjectDoc>;
   playerRef: MutableRef<PlayerRef | null>;
   flushBeforeLeaveRef: MutableRef<() => Promise<boolean>>;
   onHome: () => void;
@@ -65,8 +59,6 @@ function usePendingSaveQueue(): {
           failedAttempt: attempt,
           latestEnqueuedAttempt: latestSaveAttemptRef.current,
         });
-      } else if (result.status === 'saved') {
-        void acknowledgeIngestedGenerationResults(pending.projectId, pending.doc.assets ?? []);
       }
       observeSave(result);
     });
@@ -123,32 +115,6 @@ function useBrowserSaveGuards(projectId: string, enqueuePendingSave: () => unkno
   }, [enqueuePendingSave, projectId]);
 }
 
-function useGenerationJobResume(
-  projectId: string,
-  commands: Pick<EditorCommands, 'addAsset'>,
-  stateRef: MutableRef<TimelineState>,
-  docRef: MutableRef<ProjectDoc>,
-): void {
-  useEffect(() => {
-    let alive = true;
-    void (async () => {
-      await acknowledgeIngestedGenerationResults(projectId, docRef.current.assets ?? []).catch(() => undefined);
-      if (!alive) return;
-      await resumeOpenGenerationJobs(projectId, {
-        getState: () => stateRef.current,
-        onAsset: (asset) => {
-          if (!alive) return;
-          if ((docRef.current.assets ?? []).some((candidate) => candidate.id === asset.id || candidate.src === asset.src)) return;
-          commands.addAsset(asset);
-          if (asset.kind !== 'audio') enqueueVisualAnalysis(asset);
-        },
-        timeoutSeconds: 180,
-      });
-    })();
-    return () => { alive = false; };
-  }, [projectId, commands, stateRef, docRef]);
-}
-
 function useActiveTimelineSeek(activeTimelineId: string, playerRef: MutableRef<PlayerRef | null>): void {
   const firstTimelineRef = useRef(true);
   useEffect(() => {
@@ -163,16 +129,12 @@ function useActiveTimelineSeek(activeTimelineId: string, playerRef: MutableRef<P
 export function useEditorProjectPersistence({
   projectId,
   doc,
-  commands,
-  stateRef,
-  docRef,
   playerRef,
   flushBeforeLeaveRef,
   onHome,
 }: EditorProjectPersistenceOptions): { handleHome: () => Promise<void> } {
   const flushBeforeLeave = useEditorAutosave(projectId, doc);
   flushBeforeLeaveRef.current = flushBeforeLeave;
-  useGenerationJobResume(projectId, commands, stateRef, docRef);
   useActiveTimelineSeek(doc.activeTimelineId, playerRef);
 
   const handleHome = useCallback(async (): Promise<void> => {

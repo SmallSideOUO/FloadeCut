@@ -3,6 +3,7 @@
 // Chinese original in t(). Coverage grows incrementally; topbar/components/
 // captions/transcript/audio/editor/review are translated first.
 export const RU: Record<string, string> = {
+  '主题': 'Тема',
   // ── topbar ────────────────────────────────────────────────────────────────
   '切换界面语言': 'Переключить язык',
   '返回工程列表': 'К списку проектов',

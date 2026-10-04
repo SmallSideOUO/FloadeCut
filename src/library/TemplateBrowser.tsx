@@ -52,7 +52,7 @@ const MENU_H = 148;
 interface TemplateBrowserProps {
   templates: Tpl[];
   onAdd: (tpl: Tpl) => void;
-  onUseAI: (tpl: Tpl) => void;
+  onUseAI?: (tpl: Tpl) => void;
 }
 
 export const TemplateBrowser = memo(function TemplateBrowser({ templates, onAdd, onUseAI }: TemplateBrowserProps) {
@@ -346,12 +346,12 @@ export const TemplateBrowser = memo(function TemplateBrowser({ templates, onAdd,
               onClick={() => { addAndRemember(menuTpl); closeMenu(); }}
               style={menuItem}
             >≡ {t('添加到时间线')}</button>
-            <button
+            {onUseAI && <button
               type="button"
               role="menuitem"
               onClick={() => { onUseAI(menuTpl); closeMenu(); }}
               style={{ ...menuItem, display: 'inline-flex', alignItems: 'center', gap: 6 }}
-            ><Icon name="sparkles" size={13} />{t('用 AI 生成')}</button>
+            ><Icon name="sparkles" size={13} />{t('用 AI 生成')}</button>}
             <div style={{ height: 0.5, background: theme.border, margin: '4px 6px' }} />
             {confirmDelete ? (
               <div style={{ display: 'flex', gap: 4, padding: '2px 4px 4px' }}>

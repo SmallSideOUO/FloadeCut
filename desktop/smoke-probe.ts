@@ -13,8 +13,12 @@ export async function runDesktopSmokeProbe(
   win: BrowserWindow,
   render: boolean,
 ): Promise<void> {
-  const res = await fetch(`${origin}/api/keys`);
-  if (!res.ok) throw new Error(`/api/keys → HTTP ${res.status}`);
+  const res = await fetch(`${origin}/api/settings`);
+  if (!res.ok) throw new Error(`/api/settings → HTTP ${res.status}`);
+  const settings = await res.json() as { settings?: Record<string, unknown> };
+  if (!settings.settings || Object.keys(settings.settings).some((name) => /API_KEY|MODEL|CODEX/.test(name))) {
+    throw new Error('editor settings must not expose internal AI configuration');
+  }
   const mcp = await fetch(`${origin}/api/external-mcp/mcp`, {
     method: 'POST',
     headers: {
@@ -58,32 +62,9 @@ export async function runDesktopSmokeProbe(
     throw new Error(`background throttling is enabled (${String(throttlingDisabled)}); the MCP bridge heartbeat will stall in background windows`);
   }
   console.log('[smoke] background throttling disabled (bridge heartbeat safe)');
-  const inference = await win.webContents.executeJavaScript(
-    'window.openChatCutDesktop?.inference?.getCapabilities()',
-  ) as {
-    version?: unknown;
-    asr?: { available?: unknown };
-    semantic?: { available?: unknown };
-    clap?: { available?: unknown };
-    rhythm?: { available?: unknown };
-    hardware?: {
-      cpu?: { logicalCores?: unknown; totalMemoryBytes?: unknown };
-      gpus?: unknown;
-      hardwareAcceleration?: unknown;
-    };
-  } | null;
-  if (inference?.version !== 3
-    || typeof inference.asr?.available !== 'boolean'
-    || typeof inference.semantic?.available !== 'boolean'
-    || typeof inference.clap?.available !== 'boolean'
-    || typeof inference.rhythm?.available !== 'boolean'
-    || !Array.isArray(inference.hardware?.gpus)
-    || typeof inference.hardware?.cpu?.logicalCores !== 'number'
-    || typeof inference.hardware?.cpu?.totalMemoryBytes !== 'number'
-    || typeof inference.hardware?.hardwareAcceleration !== 'boolean') {
-    throw new Error('desktop native inference preload is unavailable');
-  }
-  console.log('[smoke] desktop native inference preload ok');
+  const hasInternalInference = await win.webContents.executeJavaScript('Boolean(window.openChatCutDesktop?.inference)');
+  if (hasInternalInference) throw new Error('internal inference must not be exposed');
+  console.log('[smoke] external editor tools only; no internal inference API');
   if (render) {
     // The render runs BEFORE the renderer-recovery phase: on the v0.2.12
     // windows-latest run the app wedged after the deliberate renderer crashes

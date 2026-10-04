@@ -10,20 +10,6 @@ import type {
   DesktopUpdateState,
 } from '../shared/desktop-update';
 import type {
-  DesktopAsrPreloadRequest,
-  DesktopAsrRequest,
-  DesktopAsrResponse,
-  DesktopClapRequest,
-  DesktopClapResponse,
-  DesktopInferenceCapabilities,
-  DesktopInferenceProgress,
-  DesktopModelLoadResponse,
-  DesktopSemanticRequest,
-  DesktopSemanticResponse,
-  DesktopRhythmRequest,
-  DesktopRhythmResponse,
-} from '../shared/desktop-inference';
-import type {
   DirectoryImportDisposition,
   DirectoryImportEvent,
   DirectoryWatchStartResult,
@@ -43,17 +29,6 @@ interface DesktopUpdateApi {
   download(): Promise<DesktopUpdateState>;
   install(): Promise<DesktopUpdateState>;
   subscribe(listener: (state: DesktopUpdateState) => void): () => void;
-}
-interface DesktopInferenceApi {
-  getCapabilities(): Promise<DesktopInferenceCapabilities>;
-  setEnabled(enabled: boolean): Promise<void>;
-  preloadAsr(request: DesktopAsrPreloadRequest): Promise<DesktopModelLoadResponse>;
-  transcribe(request: DesktopAsrRequest): Promise<DesktopAsrResponse>;
-  semantic(request: DesktopSemanticRequest): Promise<DesktopSemanticResponse>;
-  clap(request: DesktopClapRequest): Promise<DesktopClapResponse>;
-  rhythm(request: DesktopRhythmRequest): Promise<DesktopRhythmResponse>;
-  cancel(requestId: string): Promise<void>;
-  subscribeProgress(listener: (progress: DesktopInferenceProgress) => void): () => void;
 }
 
 declare global {
@@ -90,7 +65,6 @@ declare global {
       projectStore(request: ProjectStoreRequest): Promise<ProjectStoreResponse>;
       editorCredentials(): Promise<EditorBootstrapInfo>;
       updates: DesktopUpdateApi;
-      inference: DesktopInferenceApi;
     };
   }
 }

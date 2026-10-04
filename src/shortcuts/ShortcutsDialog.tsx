@@ -23,7 +23,7 @@ export function ShortcutsDialog({ onClose }: ShortcutsDialogProps) {
   const t = useT();
   // The shortcut key directory comes with the official English label. Use it directly in English mode without entering the dictionary and repeating it.
   const locale = getLocale();
-  const zh = locale === 'zh';
+  const zh = locale === 'zh' || locale === 'zh-TW';
   const actionLabel = (a: Pick<ShortcutAction, 'label' | 'labelZh'>): string =>
     localizedCatalogText(a.label, a.labelZh, locale);
   const [, bump] = useState(0);
@@ -95,7 +95,7 @@ export function ShortcutsDialog({ onClose }: ShortcutsDialogProps) {
             return (
               <div key={g.id} style={{ marginTop: 12 }}>
                 <div style={{ fontSize: 11, color: theme.textDim, letterSpacing: 0.4, margin: '0 4px 6px' }}>
-                  {locale === 'zh' ? `${g.labelZh} · ${g.label}` : g.label}
+                  {localizedCatalogText(g.label, g.labelZh, locale)}
                 </div>
                 <div style={{ display: 'grid', gap: 2 }}>
                   {rows.map((a) => {

@@ -15,16 +15,17 @@ export function SkinPicker() {
 
   return (
     <div style={{ position: 'relative', display: 'inline-flex' }}>
-      <button type="button" data-tip={t('皮肤')} aria-label={t('皮肤')}
+      <button type="button" data-tip={t('主题')} aria-label={t('主题')}
         aria-haspopup="menu" aria-expanded={open} className="cc-header-btn cc-tip cc-tip-r" onClick={() => setOpen((o) => !o)}
         style={{ ...trigger, color: open ? theme.text : theme.textDim, background: open ? theme.panelAlt : 'none' }}>
         <Icon name="brush" size={16} />
+        <span style={{ fontSize: 12, marginLeft: 6 }}>{t('主题')}</span>
       </button>
       {open && (
         <>
           <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 120 }} />
-          <div role="menu" aria-label={t('皮肤')} style={pop}>
-            <div style={head}>{t('皮肤')}</div>
+          <div role="menu" aria-label={t('主题')} style={pop}>
+            <div style={head}>{t('主题')}</div>
             {SKINS.map((s) => {
               const active = current === s.id;
               return (
@@ -55,7 +56,7 @@ const trigger: React.CSSProperties = {
 };
 const pop: React.CSSProperties = {
   position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 121, minWidth: 168,
-    background: theme.panelAlt, border: `0.5px solid ${theme.borderLight}`, borderRadius: 4,
+    background: theme.panelAlt, border: `0.5px solid ${theme.borderLight}`, borderRadius: 13,
   boxShadow: `0 12px 36px ${themeAlpha.shadow(0.45)}`, padding: 4, display: 'flex', flexDirection: 'column', gap: 1,
 };
 const head: React.CSSProperties = { fontSize: 10.5, color: theme.textDim, padding: '4px 8px 5px', letterSpacing: 0.4 };

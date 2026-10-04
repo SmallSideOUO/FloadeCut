@@ -1,6 +1,5 @@
-import type { ModelMessage } from 'ai';
 import { isProjectStoreRecord as isRecord } from '../../shared/project-store-validation';
-import { verifyCanonicalContextCheckpoint } from '../agent/context-compaction';
+import { verifyCanonicalContextCheckpoint } from '../agent/context-checkpoint';
 import type { PersistedChat } from './projectStore';
 import {
   MAX_AGENT_RUNS, MAX_APPROVALS, MAX_ARTIFACT_BYTES, MAX_CHECKPOINTS, MAX_EVENTS_PER_RUN,
@@ -313,7 +312,7 @@ export async function validateChatClosure(snapshot: AgentRuntimeSnapshot, chat: 
   if (chat) {
     const artifacts = new Map(snapshot.artifacts.map((row) => [row.artifactId, row]));
     await verifyCanonicalContextCheckpoint(
-      chat.llm as ModelMessage[],
+      chat.llm,
       snapshot.sidecar.checkpoints,
       async (artifactId) => artifacts.get(artifactId) ?? null,
     );

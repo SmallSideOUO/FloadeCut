@@ -8,7 +8,7 @@ let inflight: Promise<string | undefined> | undefined;
 
 async function fetchMediaDir(): Promise<string | undefined> {
   try {
-    const res = await fetch('/api/keys');
+    const res = await fetch('/api/settings');
     if (!res.ok) return undefined;
     const body = (await res.json()) as { mediaDir?: unknown };
     return typeof body.mediaDir === 'string' && body.mediaDir ? body.mediaDir : undefined;

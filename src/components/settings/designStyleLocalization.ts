@@ -1,5 +1,6 @@
 import { DESIGN_STYLE_PRESETS } from '../../editor/design-presets';
 import type { Locale } from '../../i18n/locale';
+import { toTraditionalUi } from '../../i18n/traditional';
 
 const PRESET_NAME_ZH: Record<string, string> = {
   'Terracotta Editorial': '陶土杂志风',
@@ -150,16 +151,20 @@ const GUIDE_ZH_BY_SOURCE = new Map(
 );
 
 export function localizeDesignPresetName(name: string, locale: Locale): string {
+  if (locale === 'zh-TW') return toTraditionalUi(PRESET_NAME_ZH[name] ?? name);
   return locale === 'zh' ? (PRESET_NAME_ZH[name] ?? name) : name;
 }
 export function localizeDesignRole(role: string, locale: Locale): string {
+  if (locale === 'zh-TW') return toTraditionalUi(ROLE_ZH[role] ?? role);
   return locale === 'zh' ? (ROLE_ZH[role] ?? role) : role;
 }
 
 export function localizeDesignFontRole(role: string, locale: Locale): string {
+  if (locale === 'zh-TW') return toTraditionalUi(FONT_ROLE_ZH[role] ?? role);
   return locale === 'zh' ? (FONT_ROLE_ZH[role] ?? role) : role;
 }
 
 export function localizeDesignStyleGuide(guide: string, locale: Locale): string {
+  if (locale === 'zh-TW') return toTraditionalUi(GUIDE_ZH_BY_SOURCE.get(guide) ?? guide);
   return locale === 'zh' ? (GUIDE_ZH_BY_SOURCE.get(guide) ?? guide) : guide;
 }

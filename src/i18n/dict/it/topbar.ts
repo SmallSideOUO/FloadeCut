@@ -1,5 +1,6 @@
 // IT dictionary (field fragmentation, key = Chinese original text).
 export default {
+  '主题': 'Tema',
   '切换界面语言': 'Cambia lingua interfaccia',
   '返回工程列表': 'Torna ai progetti',
   '双击重命名': 'Doppio clic per rinominare',

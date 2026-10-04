@@ -1,7 +1,8 @@
 import { Suspense, type ComponentProps } from 'react';
 import { theme } from '../theme';
+import { UI_FONT } from '../branding';
 import { TopBar } from '../components/TopBar';
-import { ChatPanel } from '../components/chat/ChatPanel';
+import { ExternalToolReview } from './ExternalToolReview';
 import { LibraryPanel } from '../library/LibraryPanel';
 import { PreviewPanel } from '../components/PreviewPanel';
 import { InspectorPanel } from '../components/InspectorPanel';
@@ -11,7 +12,7 @@ import { Divider } from '../components/Divider';
 import { AppToastHost } from '../ui/AppToastHost';
 // Opened on demand, so they load on demand — see workspaceDialogs.tsx.
 import {
-  DesignStylePanel, ExportDialog, SettingsDialog, ShortcutsDialog, VersionHistory,
+  DesignStylePanel, ExportDialog, ShortcutsDialog, VersionHistory,
 } from './workspaceDialogs';
 import { useWorkspaceDialogPrefetch } from './workspaceDialogLoaders';
 
@@ -23,10 +24,7 @@ export interface EditorWorkspaceViewProps {
   designStylePanel: ComponentProps<typeof DesignStylePanel> | null;
   versionHistory: ComponentProps<typeof VersionHistory> | null;
   shortcutsDialog: ComponentProps<typeof ShortcutsDialog> | null;
-  settingsDialog: ComponentProps<typeof SettingsDialog> | null;
-  chatPanel: ComponentProps<typeof ChatPanel>;
-  chatCollapsed: boolean;
-  onResizeChat: ComponentProps<typeof Divider>['onResize'];
+  externalTools: ComponentProps<typeof ExternalToolReview>;
   libraryPanel: ComponentProps<typeof LibraryPanel>;
   onResizeLibrary: ComponentProps<typeof Divider>['onResize'];
   previewPanel: ComponentProps<typeof PreviewPanel>;
@@ -39,7 +37,7 @@ export interface EditorWorkspaceViewProps {
 
 function renderLibrary(props: EditorWorkspaceViewProps) {
   return (
-    <div style={{ gridColumn: 3, gridRow: 2, minHeight: 0, minWidth: 0, overflow: 'hidden' }}>
+    <div style={{ gridColumn: 1, gridRow: 2, minHeight: 0, minWidth: 0, overflow: 'hidden' }}>
       <LibraryPanel {...props.libraryPanel} />
     </div>
   );
@@ -47,7 +45,7 @@ function renderLibrary(props: EditorWorkspaceViewProps) {
 
 function renderPreview(props: EditorWorkspaceViewProps) {
   return (
-    <div className="cc-preview-workspace" style={{ gridColumn: 5, gridRow: 2 }}>
+    <div className="cc-preview-workspace" style={{ gridColumn: 3, gridRow: 2 }}>
       <PreviewPanel {...props.previewPanel} />
       {props.inspectorPanel && <InspectorPanel {...props.inspectorPanel} />}
     </div>
@@ -56,7 +54,7 @@ function renderPreview(props: EditorWorkspaceViewProps) {
 
 function renderTimeline(props: EditorWorkspaceViewProps) {
   return (
-    <div style={{ gridColumn: '3 / -1', gridRow: 4, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+    <div style={{ gridColumn: '1 / -1', gridRow: 4, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
       <TimelineTabs {...props.timelineTabs} />
       <Timeline {...props.timeline} />
     </div>
@@ -67,7 +65,7 @@ export function EditorWorkspaceView(props: EditorWorkspaceViewProps) {
   useWorkspaceDialogPrefetch();
   return (
     <div
-      className="cc-editor-shell"
+      className="cc-editor-shell floade-shell"
       style={{
         display: 'grid',
         gridTemplateColumns: props.gridTemplateColumns,
@@ -76,7 +74,7 @@ export function EditorWorkspaceView(props: EditorWorkspaceViewProps) {
         overflow: 'hidden',
         background: theme.bg,
         color: theme.text,
-        fontFamily: 'Geist, system-ui, -apple-system, sans-serif',
+        fontFamily: UI_FONT,
       }}
     >
       <TopBar {...props.topBar} />
@@ -84,21 +82,17 @@ export function EditorWorkspaceView(props: EditorWorkspaceViewProps) {
           it did before it was opened. The idle prefetch keeps that window tiny. */}
       <Suspense fallback={null}>
         {props.exportDialog && <ExportDialog {...props.exportDialog} />}
-        {props.settingsDialog && <SettingsDialog {...props.settingsDialog} />}
         {props.designStylePanel && <DesignStylePanel {...props.designStylePanel} />}
         {props.versionHistory && <VersionHistory {...props.versionHistory} />}
         {props.shortcutsDialog && <ShortcutsDialog {...props.shortcutsDialog} />}
       </Suspense>
-      <ChatPanel {...props.chatPanel} />
-      <div style={{ gridColumn: 2, gridRow: '2 / 5' }}>
-        {!props.chatCollapsed && <Divider onResize={props.onResizeChat} />}
-      </div>
+      <ExternalToolReview {...props.externalTools} />
       {renderLibrary(props)}
-      <div style={{ gridColumn: 4, gridRow: 2 }}>
+      <div style={{ gridColumn: 2, gridRow: 2 }}>
         <Divider onResize={props.onResizeLibrary} />
       </div>
       {renderPreview(props)}
-      <div style={{ gridColumn: '3 / -1', gridRow: 3 }}>
+      <div style={{ gridColumn: '1 / -1', gridRow: 3 }}>
         <Divider orientation="horizontal" onResize={props.onResizeTimeline} />
       </div>
       {renderTimeline(props)}

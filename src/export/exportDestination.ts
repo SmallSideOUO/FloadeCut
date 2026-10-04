@@ -1,4 +1,5 @@
 import { downloadBlob } from './exportFiles';
+import type {} from '../desktop-api';
 import {
   createExportFailure,
   exportFailureFrom,

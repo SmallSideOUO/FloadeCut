@@ -1,8 +1,6 @@
 import type { MediaAsset, MediaAssetKind } from '../editor/types';
 import { t } from '../i18n/locale';
 import { putMediaBlob } from '../persist/mediaBlobStore';
-import { extractAudioForAsr } from '../transcript/provider';
-import { extractAsrFromFile } from '../transcript/client-asr-extract';
 import { kindOf, probeMediaFile, type MediaMetadata } from './mediaProbe';
 import { createMediaSourceRevision } from '../editor/mediaSourceRevision';
 import { normalizeSha256Hash } from '../../shared/content-hash';
@@ -326,18 +324,7 @@ async function uploadPreparedMedia(
       asrPath: Promise.resolve(null),
     };
   }
-  const clientAsr = kind === 'video' || kind === 'audio'
-    ? extractAsrFromFile(file, kind).catch(() => null)
-    : Promise.resolve(null);
-  const asrPath = kind === 'video' || kind === 'audio'
-    ? Promise.any([
-      clientAsr.then((path) => { if (!path) throw new Error('client-asr-miss'); return path; }),
-      extractAudioForAsr(transferred.src).then((path) => {
-        if (!path) throw new Error('server-asr-miss');
-        return path;
-      }),
-    ]).catch(() => null)
-    : Promise.resolve(null);
+  const asrPath: Promise<string | null> = Promise.resolve(null);
   hooks.onUploaded?.({
     id, src: transferred.src, kind, name: sourceFilename,
     sourceRevision, sourceContentHash: transferred.sourceContentHash,

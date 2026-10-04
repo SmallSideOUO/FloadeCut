@@ -24,28 +24,9 @@ const COMPOSITORS = [
   'darwin-arm64', 'darwin-x64', 'win32-x64-msvc',
   'linux-arm64-gnu', 'linux-arm64-musl', 'linux-x64-gnu', 'linux-x64-musl',
 ];
-const ONNX_RUNTIME_TARGETS = [
-  'darwin/arm64', 'darwin/x64', 'win32/arm64', 'win32/x64', 'linux/arm64', 'linux/x64',
-];
 const TARGET_COMPOSITOR = { 'darwin-arm64': 'darwin-arm64', 'darwin-x64': 'darwin-x64', 'win32-x64': 'win32-x64-msvc', 'linux-x64': 'linux-x64-gnu' };
 const target = process.env.CC_EB_TARGET ?? `${process.platform}-${process.arch}`;
 const keep = TARGET_COMPOSITOR[target] ?? target;
-const nativeInferenceSupported = target.startsWith('darwin-')
-  || target.startsWith('win32-') || target.startsWith('linux-');
-const keepOnnxRuntime = nativeInferenceSupported ? target.replace('-', '/').replace('-msvc', '') : null;
-const nativeInferenceWorkers = nativeInferenceSupported
-  ? [
-      'desktop-dist/native-asr-worker.mjs',
-      'desktop-dist/native-semantic-worker.mjs',
-      'desktop-dist/native-clap-worker.mjs',
-      'desktop-dist/native-rhythm-worker.mjs',
-    ]
-  : [];
-const onnxRuntimeFilters = keepOnnxRuntime
-  ? ONNX_RUNTIME_TARGETS
-      .filter((runtimeTarget) => runtimeTarget !== keepOnnxRuntime)
-      .map((runtimeTarget) => `!node_modules/onnxruntime-node/bin/napi-v6/${runtimeTarget}/**`)
-  : ['!node_modules/onnxruntime-node/**'];
 // sqlite-vec publishes separate extension packages whose suffixes do not all
 // match Node's process.platform names. Keep only the package for this artifact.
 const SQLITE_VEC_PACKAGES = [
@@ -62,25 +43,19 @@ const keepSqliteVec = TARGET_SQLITE_VEC_PACKAGE[target];
 const sqliteVecFilters = SQLITE_VEC_PACKAGES
   .filter((packageSuffix) => packageSuffix !== keepSqliteVec)
   .map((packageSuffix) => `!node_modules/sqlite-vec-${packageSuffix}/**`);
-const updateChannel = target.includes('arm64') ? 'latest-arm64' : 'latest-x64';
 const hasMacSigningCertificate = Boolean(process.env.CSC_LINK || process.env.CSC_NAME);
 
 export default {
-  appId: 'dev.openchatcut.app',
-  productName: 'OpenChatCut',
+  appId: 'com.smallside.floade.video',
+  productName: 'Floade',
   artifactName: '${productName}-${version}-${arch}.${ext}',
   directories: { output: 'release' },
   // 7z LZMA maximum compression for the distributable installers (dmg/zip/nsis/AppImage).
   // Trade-off: noticeably slower packaging time in exchange for a smaller final download.
   // The app.asar content itself is handled by the `compression` setting; native binaries
-  // (onnxruntime-node, ffmpeg-static, @remotion/compositor, sqlite-vec) stay unpacked per asarUnpack.
+  // (ffmpeg-static, @remotion/compositor, sqlite-vec) stay unpacked per asarUnpack.
   compression: 'maximum',
-  publish: [{
-    provider: 'github',
-    owner: '0xsline',
-    repo: 'OpenChatCut',
-    channel: updateChannel,
-  }],
+  publish: null,
   files: [
     // Two bundles: the entry (desktop/bootstrap.ts) and the application it
     // imports dynamically (desktop/main.ts). Shipping only the entry would make
@@ -88,12 +63,9 @@ export default {
     'desktop-dist/main.mjs',
     'desktop-dist/app-main.mjs',
     'desktop-dist/preload.cjs',
-    ...nativeInferenceWorkers,
     'package.json',
     // Keep only the target compositor; renderer selects its package from process.platform at runtime.
     ...COMPOSITORS.filter((c) => c !== keep).map((c) => `!node_modules/@remotion/compositor-${c}/**`),
-    // onnxruntime-node publishes every platform in one package; ship only this artifact's binary.
-    ...onnxRuntimeFilters,
     // sqlite-vec (semantic vectors): ship only the target platform's vec0 extension.
     ...sqliteVecFilters,
   ],
@@ -105,16 +77,15 @@ export default {
     'node_modules/ffmpeg-static/**',
     'node_modules/@ffprobe-installer/**',
     'node_modules/@remotion/compositor-*/**',
-    'node_modules/onnxruntime-node/**',
     'node_modules/sqlite-vec-*/**',
-    'node_modules/@github/copilot-*/**',
-    'node_modules/koffi/**',
   ],
   extraResources: [
     // Exclude media/uploads because Vite copies all of public/ into dist, which would embed gigabytes of user assets.
     // uploadsMiddleware serves /media/uploads directly from the asset directory (userData in packaged builds),
     // so resources/dist never needs those files.
-    { from: 'dist', to: 'dist', filter: ['**/*', '!media/uploads/**'] },
+    { from: 'dist', to: 'dist', filter: ['**/*', '!media/uploads/**', '!media/asr-models/**', '!mediapipe/**', '!models/**', '!whisper-cli/**'] },
+    { from: 'LICENSE', to: 'LICENSE' },
+    { from: 'assets/branding/FLOADE-NEED-LICENSE.txt', to: 'FLOADE-NEED-LICENSE.txt' },
     { from: 'desktop-dist/remotion-bundle', to: 'remotion-bundle' },
     { from: 'desktop-dist/chrome-headless-shell', to: 'chrome-headless-shell' },
   ],
@@ -122,7 +93,7 @@ export default {
   mac: {
     target: ['dmg', 'zip'],
     category: 'public.app-category.video',
-    icon: 'assets/branding/openchatcut-icon.icns',
+    icon: 'public/floade-logo.png',
     entitlements: 'desktop/entitlements.mac.plist',
     entitlementsInherit: 'desktop/entitlements.mac.plist',
     // Hardened runtime is required for Developer ID distribution. Ad-hoc local
@@ -135,18 +106,21 @@ export default {
   },
   win: {
     target: ['nsis'],
-    icon: 'public/openchatcut-icon.png',
+    icon: 'assets/branding/floade.ico',
   },
   nsis: {
     oneClick: false,
     allowToChangeInstallationDirectory: true,
+    createDesktopShortcut: 'always',
+    createStartMenuShortcut: true,
+    shortcutName: 'Floade',
   },
   linux: {
     target: ['AppImage'],
-    icon: 'public/openchatcut-icon.png',
+    icon: 'public/floade-logo.png',
     category: 'AudioVideo',
     // Keep the executable name stable for release/linux-unpacked/openchatcut and CI smoke tests.
-    executableName: 'openchatcut',
+    executableName: 'floade-video',
     // Pair with package.json desktopName so desktop environments associate the window with its .desktop entry.
     syncDesktopName: true,
   },

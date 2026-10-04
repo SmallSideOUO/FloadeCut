@@ -18,7 +18,6 @@ import {
   type ExternalRecordedInvocation,
 } from './external-run-ledger';
 import { policyForTool } from './execution-policy';
-import { ASK_MODE_TOOL_SCHEMAS } from './ask-mode-tools';
 import {
   agentRunId,
   base,
@@ -47,18 +46,7 @@ export const runtimeBinding = {
   editorInstanceId: 'runtime-editor',
   baseRevision: revisionOf(base),
 };
-const missingSkill = await runtime.execute(
-  'load_skill',
-  { name: 'missing-skill-check' },
-  runtimeBinding,
-);
-assert(
-  missingSkill
-    && typeof missingSkill === 'object'
-    && 'error' in missingSkill
-    && String(missingSkill.error).includes('no such skill'),
-  'stateless skill reads execute without an edit session',
-);
+await assert.rejects(runtime.execute('load_skill', { name: 'retired' }, runtimeBinding), /not active/);
 const begun = await runtime.execute('begin_edit_session', {}, runtimeBinding);
 assert(begun && typeof begun === 'object' && 'editSessionId' in begun);
 await assert.rejects(
@@ -307,23 +295,8 @@ assert(isExternalRealTool('submit_image'), 'generation is confirm-gated for exte
 assert(isExternalRealTool('import_media'), 'import is confirm-gated for external agents');
 assert(isExternalGlobalReadTool('load_skill'));
 assert(!isExternalDraftTool('load_skill'));
-const askModeToolNames = new Set(ASK_MODE_TOOL_SCHEMAS.map((tool) => tool.name));
-assert(askModeToolNames.has('load_skill'), 'Q&A mode exposes the current skill reader');
-assert(askModeToolNames.has('read_project'), 'Q&A mode exposes project inspection');
-assert(askModeToolNames.has('search_stock_media'), 'Q&A mode exposes read-only stock search');
-assert(!askModeToolNames.has('edit_captions'), 'Q&A mode excludes draft edits');
-assert(!askModeToolNames.has('submit_render_job'), 'Q&A mode excludes live side effects');
-assert(
-  ASK_MODE_TOOL_SCHEMAS.every(
-    (tool) => isExternalGlobalReadTool(tool.name) || isExternalReadTool(tool.name),
-  ),
-  'every Q&A mode tool is classified read-only',
-);
 const externalLoadSkill = externalToolSchemas().find((tool) => tool.name === 'load_skill');
-assert(externalLoadSkill, 'load_skill is exposed to external agents');
-assert.equal(externalLoadSkill.annotations?.readOnlyHint, true);
-assert(!('editSessionId' in (externalLoadSkill.input_schema.properties ?? {})));
-assert(!externalLoadSkill.input_schema.required?.includes('editSessionId'));
+assert(!externalLoadSkill, 'internal creative workflow management is removed');
 const externalSubmitRender = externalToolSchemas().find((tool) => tool.name === 'submit_render_job');
 assert(externalSubmitRender, 'submit_render_job is exposed to external agents');
 assert.equal(externalSubmitRender.annotations?.readOnlyHint, false);
