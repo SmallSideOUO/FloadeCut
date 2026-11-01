@@ -19,12 +19,15 @@ assert.ok(config.extraResources.some((entry: { from: string }) => entry.from.end
 // An unpacked app inside the checkout can accidentally resolve a missing runtime
 // package from the checkout's devDependencies. Installed apps have no such fallback.
 const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+const lock = JSON.parse(readFileSync(new URL('../package-lock.json', import.meta.url), 'utf8'));
 const built = await build({ entryPoints: ['desktop/main.ts'], bundle: true, platform: 'node', format: 'esm', packages: 'external', metafile: true, write: false, logLevel: 'silent' });
 for (const output of Object.values(built.metafile!.outputs)) {
   for (const imported of output.imports.filter((entry) => entry.external)) {
     const name = imported.path.startsWith('@') ? imported.path.split('/').slice(0, 2).join('/') : imported.path.split('/')[0];
     if (imported.path.startsWith('node:') || builtinModules.includes(imported.path) || name === 'electron') continue;
     assert.ok(manifest.dependencies[name], `desktop runtime import ${name} must be a production dependency`);
+    assert.ok(lock.packages[`node_modules/${name}`] && !lock.packages[`node_modules/${name}`].dev && !lock.packages[`node_modules/${name}`].optional,
+      `desktop runtime import ${name} must be required in the production lockfile`);
   }
 }
 console.log('Floade packaging: desktop launch bundles, license notices, and no internal AI workers');
