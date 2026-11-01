@@ -191,7 +191,7 @@ function VideoTab({ panel, item }: InspectorContentProps) {
         saturate: isMixed(panel, (entry) => entry.filters?.saturate ?? 1),
         blur: isMixed(panel, (entry) => entry.filters?.blur ?? 0),
       }} onChange={panel.onItemFiltersChange} autoGrade={panel.autoGrade} />
-      {(item.kind === 'video' || item.kind === 'image') && panel.selectedItems.every((entry) => entry.kind === 'video' || entry.kind === 'image') && <><SectionLabel>{t('特效')}</SectionLabel>{effectsMixed ? <div className="cc-insp-muted">{t('所选片段的特效堆栈不同；请先统一堆栈后再批量编辑。')}</div> : <EffectsControl item={item} onChange={panel.onItemEffectsChange} previewStatus={panel.selectedPreviewStatuses?.find((status) => status.kind === 'effect' && status.targetId === item.id)} />}</>}
+      {(item.kind === 'video' || item.kind === 'image' || item.kind === 'sequence') && panel.selectedItems.every((entry) => entry.kind === 'video' || entry.kind === 'image' || entry.kind === 'sequence') && <><SectionLabel>{t('特效')}</SectionLabel>{effectsMixed ? <div className="cc-insp-muted">{t('所选片段的特效堆栈不同；请先统一堆栈后再批量编辑。')}</div> : <EffectsControl item={item} sequenceOnly={panel.selectedItems.some((entry) => entry.kind === 'sequence')} onChange={panel.onItemEffectsChange} previewStatus={panel.selectedPreviewStatuses?.find((status) => status.kind === 'effect' && status.targetId === item.id)} />}</>}
     </>
   );
 }

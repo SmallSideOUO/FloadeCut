@@ -98,7 +98,7 @@ async function main(): Promise<void> {
       assert.equal(error.failure.retryable, false);
       assert.match(error.message, /clip\.mp4/);
       assert.match(error.message, new RegExp(BLOB_B.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-      assert.match(error.message, /重新导入|re-import/);
+      assert.match(error.message, /重新导入|重新匯入|re-import/);
       return true;
     },
   );

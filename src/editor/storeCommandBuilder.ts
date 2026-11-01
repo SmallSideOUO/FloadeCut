@@ -1,4 +1,5 @@
 import { copyTranscriptIdentity } from '../transcript/identity';
+import { compoundClips, uncompoundClips } from './compoundClips';
 import type { AtomicAction, ProjectDispatch } from './reduce';
 import { maxOrder, projectReduce } from './reduce';
 import { sourceRevisionOf } from './mediaSourceRevision';
@@ -129,6 +130,16 @@ export function buildCommands(dispatch: ProjectDispatch, getDoc: () => ProjectDo
       setProjectFps: (fps) => dispatch({ type: 'tl.setFps', fps }),
       setTimelineHidden: (id, hidden) => dispatch({ type: 'tl.setHidden', id, hidden }),
       applyDoc: (doc) => dispatch({ type: 'tl.setDoc', doc }),
+      compoundClips: (ids, name) => {
+        const result = compoundClips(getDoc(), ids, name);
+        if (result.ok) dispatch({ type: 'tl.setDoc', doc: result.doc });
+        return result.ok ? { ok: true } : result;
+      },
+      uncompoundClips: (ids) => {
+        const result = uncompoundClips(getDoc(), ids);
+        if (result.ok) dispatch({ type: 'tl.setDoc', doc: result.doc });
+        return result.ok ? { ok: true } : result;
+      },
       batch: (actions, label) => {
         if (actions.length) dispatch({ type: 'batch', actions, label });
       },

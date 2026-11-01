@@ -3,10 +3,15 @@ import { readFileSync } from 'node:fs';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { PlayerRef } from '@remotion/player';
 import type { RefObject } from 'react';
-import type { TimelineItem, TimelineState } from '../../editor/types';
+import type { ClipEffect, ProjectDoc, TimelineItem, TimelineState } from '../../editor/types';
+import { historyReduce, type History } from '../../editor/reduce';
+import { FX_EFFECTS } from '../../gl/fx/shaderEffects';
+import { fxUniforms } from '../../gl/fx/uniforms';
 import { t } from '../../i18n/locale';
 import { PreviewTransformOverlay } from './PreviewTransformOverlay';
 import { fitPreviewCanvasSize, previewPaddedClientSize, previewStageContentSize } from './previewCanvasGeometry';
+import { effectivePreviewTransform } from './previewTransform';
+import { createLocalMosaic, LOCAL_MOSAIC_ID, mosaicRect, mosaicToPreview, moveMosaicRect, patchMosaicRect, previewToMosaic } from './localMosaic';
 
 const item: TimelineItem = {
   id: 'card',
@@ -147,4 +152,103 @@ for (const trackPatch of [{ locked: true }, { hidden: true }]) {
   assert.doesNotMatch(markup, /data-preview-handle=/);
 }
 
-console.log('preview-transform-overlay.verify: ok (语义/皮肤/四角/四边裁切/旋转/锁定隐藏/帧范围)');
+// Multiple independent mosaic regions expose their own labels and resize handles.
+{
+  const a = createLocalMosaic([]);
+  const b = createLocalMosaic([a]);
+  assert.notEqual(a.id, b.id);
+  assert.notDeepEqual(mosaicRect(a), mosaicRect(b), 'new regions must not completely hide each other');
+  const state = stateOf();
+  state.items = [{ ...item, kind: 'image', effects: [a, b] }];
+  const markup = renderToStaticMarkup(<PreviewTransformOverlay state={state} {...props} onItemEffectsChange={() => undefined} />);
+  assert.equal((markup.match(/data-mosaic-region=/g) ?? []).length, 2);
+  assert.equal((markup.match(/data-mosaic-handle=/g) ?? []).length, 8, 'active region has independent width/height handles');
+  for (const kind of ['video', 'sequence'] as const) {
+    const nested = { ...state, items: [{ ...state.items[0], kind, ...(kind === 'sequence' ? { compound: true, timelineId: 'child' } : {}) }] };
+    const controls = renderToStaticMarkup(<PreviewTransformOverlay state={nested} {...props} onItemEffectsChange={() => undefined} />);
+    assert.equal((controls.match(/data-mosaic-region=/g) ?? []).length, 2, `${kind} exposes both mosaic regions`);
+    assert.equal((controls.match(/data-mosaic-handle=/g) ?? []).length, 8);
+  }
+  for (const patch of [{ locked: true }, { hidden: true }]) {
+    const hidden = { ...state, tracks: { V2: { kind: 'video' as const, ...patch } } };
+    assert.doesNotMatch(renderToStaticMarkup(<PreviewTransformOverlay state={hidden} {...props} onItemEffectsChange={() => undefined} />), /data-mosaic-region=/);
+  }
+  assert.doesNotMatch(renderToStaticMarkup(<PreviewTransformOverlay state={state} {...props} />), /data-mosaic-region=/, 'read-only preview must not expose writable regions');
+  const stale = { ...state, items: [{ ...state.items[0], startFrame: 30 }] };
+  assert.doesNotMatch(renderToStaticMarkup(<PreviewTransformOverlay state={stale} {...props} onItemEffectsChange={() => undefined} />), /data-mosaic-region=/);
+
+  const before = mosaicRect(a);
+  const moved = moveMosaicRect(before, { x: 0.1, y: -0.1 }, 'move');
+  const result = patchMosaicRect([a, b], a.id, moved);
+  assert.equal(result[1], b, 'editing a region must preserve the other region');
+  const uniforms = fxUniforms(FX_EFFECTS[LOCAL_MOSAIC_ID], result[0].overrides);
+  assert.ok(Math.abs(uniforms.u_center_x as number - 0.6) < 1e-9);
+  assert.ok(Math.abs(uniforms.u_center_y as number - 0.6) < 1e-9, 'upward pointer motion raises bottom-up shader Y');
+  assert.ok(Math.abs(mosaicRect(result[0]).y - moved.y) < 1e-9);
+}
+
+// Resize keeps the opposite edge fixed, clamps to the source, and preserves other parameters.
+{
+  const rect = { x: 0.2, y: 0.3, width: 0.4, height: 0.2 };
+  const nw = moveMosaicRect(rect, { x: 0.1, y: 0.05 }, 'nw');
+  assert.ok(Math.abs(nw.x + nw.width - 0.6) < 1e-9);
+  assert.ok(Math.abs(nw.y + nw.height - 0.5) < 1e-9);
+  assert.ok(Math.abs(nw.width - 0.3) < 1e-9);
+  assert.ok(Math.abs(nw.height - 0.15) < 1e-9);
+  const min = moveMosaicRect(rect, { x: -10, y: -10 }, 'se');
+  assert.ok(Math.abs(min.width - 0.01) < 1e-9 && Math.abs(min.height - 0.01) < 1e-9);
+  assert.deepEqual(moveMosaicRect(rect, { x: 10, y: -10 }, 'move'), { ...rect, x: 0.6, y: 0 });
+  const edge = moveMosaicRect({ x: -0.5, y: 0.95, width: 1, height: 0.1 }, { x: 10, y: 10 }, 'se');
+  assert.ok(edge.x >= 0 && edge.y >= 0 && edge.x + edge.width <= 1 && edge.y + edge.height <= 1,
+    'regions previously positioned past the source edge remain bounded when resized');
+  const effect: ClipEffect = { id: 'm', assetId: LOCAL_MOSAIC_ID, overrides: { block_size: 45, feather: 8 } };
+  const changed = patchMosaicRect([effect], 'm', nw)[0];
+  assert.equal(changed.overrides?.block_size, 45);
+  assert.equal(changed.overrides?.feather, 8);
+  assert.deepEqual(mosaicRect({ id: 'old', assetId: LOCAL_MOSAIC_ID }), { x: 0.4, y: 0.6, width: 0.2, height: 0.2 }, 'existing shader defaults retain bottom-up Y');
+}
+
+// EffectMediaFill rasterizes to the visible source surface, not the letterboxed canvas.
+for (const fit of ['contain', 'cover'] as const) {
+  for (const rotation of [0, 35, -90]) {
+    const state = stateOf();
+    state.fit = fit;
+    const media: TimelineItem = { ...item, kind: 'image', width: 1920, height: 1080,
+      transform: { x: 8, y: -12, scaleX: 0.7, scaleY: 1.2, rotation },
+      zoom: { magnification: 1.8, focalPointX: 0.3, focalPointY: 0.4, shape: 'instant' } };
+    const candidate = { item: media, localFrame: 20, transform: effectivePreviewTransform(media, 20) };
+    for (const point of [{ x: 0, y: 0 }, { x: 0.3, y: 0.7 }, { x: 1, y: 1 }]) {
+      const roundTrip = previewToMosaic(state, candidate, mosaicToPreview(state, candidate, point));
+      assert.ok(Math.abs(roundTrip.x - point.x) < 1e-9 && Math.abs(roundTrip.y - point.y) < 1e-9);
+    }
+  }
+}
+{
+  const state = stateOf();
+  const media: TimelineItem = { ...item, kind: 'image', width: 1920, height: 1080, transform: undefined };
+  const candidate = { item: media, localFrame: 20, transform: effectivePreviewTransform(media, 20) };
+  assert.deepEqual(mosaicToPreview(state, candidate, { x: 0, y: 0 }), { x: 0, y: 656 });
+  assert.deepEqual(mosaicToPreview(state, candidate, { x: 1, y: 1 }), { x: 1080, y: 1264 });
+}
+
+// A continuous drag is one undo entry; all effect parameters survive project serialization.
+{
+  const a = createLocalMosaic([]);
+  const b = createLocalMosaic([a]);
+  const state = stateOf();
+  state.items = [{ ...item, kind: 'image', effects: [a, b] }];
+  const doc = { version: 3, assets: [], mediaFolders: [], activeTimelineId: 'tl',
+    timelines: [{ ...state, id: 'tl', name: 'main', order: 0 }] } as ProjectDoc;
+  let history: History = { past: [], present: doc, future: [] };
+  history = historyReduce(history, { type: 'history.beginGesture' });
+  for (const x of [0.1, 0.2, 0.3]) {
+    history = historyReduce(history, { type: 'setEffects', id: item.id,
+      effects: patchMosaicRect([a, b], a.id, moveMosaicRect(mosaicRect(a), { x, y: 0 }, 'move')) });
+  }
+  history = historyReduce(history, { type: 'history.endGesture' });
+  assert.equal(history.past.length, 1);
+  assert.deepEqual(historyReduce(history, { type: 'undo' }).present.timelines[0].items[0].effects, [a, b]);
+  assert.deepEqual(JSON.parse(JSON.stringify(history.present)).timelines[0].items[0].effects, history.present.timelines[0].items[0].effects);
+}
+
+console.log('preview-transform-overlay.verify: ok (transform controls, multi-region mosaic, geometry, resize, shader coordinates, history and serialization)');

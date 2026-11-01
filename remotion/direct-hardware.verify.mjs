@@ -5,7 +5,15 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import { renderDirectHardware } from './direct-hardware.mjs';
+import { needsAacFinalization, renderDirectHardware } from './direct-hardware.mjs';
+for (const customOverride of [false, true]) {
+  assert.equal(needsAacFinalization({ platform: 'win32', codec: 'h264', binariesDirectory: '/runtime', customOverride }), true,
+    'Windows native NVENC, custom encoders and software fallback must all avoid libfdk_aac');
+}
+assert.equal(needsAacFinalization({ platform: 'darwin', codec: 'h264', binariesDirectory: '/runtime' }), false);
+assert.equal(needsAacFinalization({ platform: 'linux', codec: 'h264', binariesDirectory: '/runtime', customOverride: true }), true);
+assert.equal(needsAacFinalization({ platform: 'win32', codec: 'vp8', binariesDirectory: '/runtime' }), false);
+assert.equal(needsAacFinalization({ platform: 'win32', codec: 'h264', binariesDirectory: null }), false);
 const require = createRequire(import.meta.url);
 const ffmpeg = require('ffmpeg-static');
 const ffprobe = require('@ffprobe-installer/ffprobe').path;
@@ -31,12 +39,13 @@ try {
       await copyFile(input, options.outputLocation);
       return 'rendered';
     },
-    options: { outputLocation: output },
+    options: { outputLocation: output, codec: 'h264', hardwareAcceleration: 'required' },
     binariesDirectory: binaries,
   });
   assert.equal(result, 'rendered');
   assert.equal(renderOptions.audioCodec, 'mp3');
   assert.equal(renderOptions.binariesDirectory, binaries);
+  assert.equal(renderOptions.hardwareAcceleration, 'required', 'native NVENC remains enabled while audio is finalized');
   const { stdout } = await run(ffprobe, [
     '-v', 'error', '-show_entries', 'stream=codec_name,codec_type', '-of', 'json', output,
   ]);

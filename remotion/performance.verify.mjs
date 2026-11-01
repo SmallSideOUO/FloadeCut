@@ -177,8 +177,8 @@ console.log('remotion performance verification passed');
   assert.ok((render.match(/binariesDirectory: binariesDirectory\(\)/g) ?? []).length >= 5,
     'every composition selection, media render and still render passes the binaries directory');
   assert.doesNotMatch(render, /binariesDirectory: undefined/, 'the software retry keeps the binaries directory');
-  assert.match(render, /attempt\.ffmpegOverride\s*\?\s*renderDirectHardware/,
-    'the custom ffmpeg override, not the binaries directory, marks the direct-hardware attempt');
+  assert.match(render, /needsAacFinalization\(\{[\s\S]*?customOverride: !!attempt\.ffmpegOverride/,
+    'compatible audio finalization covers both custom hardware and Windows native/software attempts');
 }
 
 // ── Hardware H.264 frame-size ceiling ─────────────────────────────────────────

@@ -16,6 +16,7 @@ import { TEMPLATES } from '../../editor/initial';
 import { t } from '../../i18n/locale';
 import { isIsolateAudioFxId, strengthFromAudioFxId } from '../../audio/isolateVoice';
 import { showAppToast } from '../../ui/appToast';
+import { createLocalMosaic, LOCAL_MOSAIC_ID } from '../preview/localMosaic';
 
 interface DropCtx {
   state: TimelineState;
@@ -29,13 +30,17 @@ export function applyLibraryToClip({ state, commands, notice, getState, getAsset
   const visual = item.kind !== 'audio';
   if (payload.kind === 'fx' || payload.kind === 'lut') {
     // GIF does not enter the GL pipeline (MediaFill/ClipFx only textures video/image), and will not be rendered if accepted - honest rejection
-    if (item.kind !== 'video' && item.kind !== 'image') {
+    if (item.kind === 'sequence' && payload.id !== LOCAL_MOSAIC_ID) {
+      notice(t('合并片段目前支持局部马赛克，请在内部片段上添加其他特效。'));
+      return false;
+    }
+    if (item.kind !== 'video' && item.kind !== 'image' && item.kind !== 'sequence') {
       notice(t('{kind}只能用在视频 / 图片片段上（GIF/MG 不走 GL 特效管线）', { kind: payload.kind === 'lut' ? 'LUT' : t('特效') }));
       return false;
     }
     if (!(payload.id in ALL_FX)) return false;
     const prev = item.effects ?? [];
-    const next = [
+    const next = payload.id === LOCAL_MOSAIC_ID ? [...prev, createLocalMosaic(prev)] : [
       ...prev.filter((e) => e.assetId !== payload.id),
       { id: `fx_${payload.id}`, assetId: payload.id, overrides: {} },
     ];

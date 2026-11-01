@@ -7,6 +7,7 @@ import {
   captionTrackEntries,
   type ProjectDoc,
   type ClipTransform,
+  type ClipEffect,
   type KeyframeProp,
   type TimelineItem,
   type TimelineState,
@@ -94,6 +95,7 @@ interface PreviewPanelProps {
   onBeginHistoryGesture?: () => void;
   onEndHistoryGesture?: () => void;
   onItemPropChange?: (id: string, key: string, value: unknown) => void;
+  onItemEffectsChange?: (id: string, effects: ClipEffect[]) => void;
   projectId: string;
   timelineId: string;
   reviewState: TimelineState;
@@ -110,7 +112,7 @@ interface PreviewPanelProps {
 export const PreviewPanel = memo(function PreviewPanel({
   state, project, playerRef, onImport, offlineSrcs, onUpdateCaptions, onSelectCaption, activeCaptionSelection, onSeedChat,
   onSelectItem, onSetItemTransform, onSetItemKeyframe, onBeginHistoryGesture, onEndHistoryGesture,
-  onItemPropChange,
+  onItemPropChange, onItemEffectsChange,
   projectId, timelineId, reviewState, selectedItem, reviewRequest, inspectorOpen, onToggleInspector,
   selectedPreviewStatuses, onSelectedPreviewStatus, slipPreview,
   hoverPreviewFrame = null,
@@ -157,6 +159,7 @@ export const PreviewPanel = memo(function PreviewPanel({
       onBeginHistoryGesture,
       onEndHistoryGesture,
       onItemPropChange,
+      onItemEffectsChange,
       onSeedChat,
     }
     : null;

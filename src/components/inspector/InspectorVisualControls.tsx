@@ -8,6 +8,7 @@ import { useT } from '../../i18n/locale';
 import { ColorParamInput, SliderRow } from './InspectorKeyframeControls';
 import type { AutoGradeControlProps } from './InspectorTypes';
 import { PreviewFidelityStatus } from './PreviewFidelityStatus';
+import { createLocalMosaic, LOCAL_MOSAIC_ID } from '../preview/localMosaic';
 export { BackgroundFillControl } from './BackgroundFillControl';
 
 const FX_IDS = Object.keys(FX_EFFECTS);
@@ -108,12 +109,12 @@ export function FilterControl({ item, mixed, onChange, autoGrade }: {
 
 // Per-clip WebGL effect stack (effects / builtin:fx-*). Order is render
 // order: each card consumes the previous card's output.
-export function EffectsControl({ item, onChange, previewStatus }: { item: TimelineItem; onChange: (effects: ClipEffect[]) => void; previewStatus?: SelectedPreviewStatus }) {
+export function EffectsControl({ item, onChange, previewStatus, sequenceOnly = false }: { item: TimelineItem; onChange: (effects: ClipEffect[]) => void; previewStatus?: SelectedPreviewStatus; sequenceOnly?: boolean }) {
   const t = useT();
   const effects = item.effects ?? [];
   const active = effects.filter((fx) => fx.assetId in FX_EFFECTS);
   const addEffect = (assetId: string) => {
-    if (assetId) onChange([...effects, { id: `fx_${crypto.randomUUID()}`, assetId, overrides: {} }]);
+    if (assetId) onChange([...effects, assetId === LOCAL_MOSAIC_ID ? createLocalMosaic(effects) : { id: `fx_${crypto.randomUUID()}`, assetId, overrides: {} }]);
   };
   const updateEffect = (id: string, patch: Partial<ClipEffect>) => onChange(effects.map((fx) => fx.id === id ? { ...fx, ...patch } : fx));
   const setParam = (effect: ClipEffect, key: string, value: ClipEffectValue) => {
@@ -134,8 +135,12 @@ export function EffectsControl({ item, onChange, previewStatus }: { item: Timeli
       <select value="" onChange={(e) => addEffect(e.target.value)}
         style={{ width: '100%', background: theme.panelAlt, color: theme.text, border: `0.5px solid ${theme.border}`, borderRadius: 6, padding: '5px 7px', fontSize: 12 }}>
         <option value="">{t('＋ 添加特效…')}</option>
-        {FX_IDS.map((id) => <option key={id} value={id}>{t(FX_EFFECTS[id].name)}</option>)}
+        {FX_IDS.filter((id) => (!sequenceOnly && item.kind !== 'sequence') || id === LOCAL_MOSAIC_ID).map((id) => <option key={id} value={id}>{t(FX_EFFECTS[id].name)}</option>)}
       </select>
+      <button type="button" className="cc-insp-btn" onClick={() => addEffect(LOCAL_MOSAIC_ID)}>{t('＋ 添加局部马赛克')}</button>
+      {effects.some((effect) => effect.assetId === LOCAL_MOSAIC_ID) && (
+        <div style={{ fontSize: 10.5, color: theme.textDim }}>{t('在预览画面拖动马赛克区域，拖动控制点调整大小；可添加多个区域。')}</div>
+      )}
       {active.length === 0 && <div style={{ fontSize: 10.5, color: theme.textDim }}>{t('尚未添加特效。')}</div>}
       {active.length > 0 && <PreviewFidelityStatus status={previewStatus} />}
       {active.map((effect, index) => {

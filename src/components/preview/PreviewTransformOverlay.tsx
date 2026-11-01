@@ -8,7 +8,7 @@ import {
   type RefObject,
 } from 'react';
 import type { PlayerRef } from '@remotion/player';
-import type { FlexCrop, ClipTransform, KeyframeProp, TimelineItem, TimelineState } from '../../editor/types';
+import type { FlexCrop, ClipEffect, ClipTransform, KeyframeProp, TimelineItem, TimelineState } from '../../editor/types';
 import { t } from '../../i18n/locale';
 import {
   cyclePreviewCandidate,
@@ -30,6 +30,7 @@ import {
 } from './previewTransform';
 import { canPreviewTextEdit, previewTextEditFields } from './previewTextEdit';
 import { PreviewTextEditBar } from './PreviewTextEditBar';
+import { PreviewMosaicOverlay } from './PreviewMosaicOverlay';
 
 export interface PreviewTransformOverlayProps {
   state: TimelineState;
@@ -41,6 +42,7 @@ export interface PreviewTransformOverlayProps {
   onEndHistoryGesture: () => void;
   /** Live text style edits for text / text-like MG clips. */
   onItemPropChange?: (id: string, key: string, value: unknown) => void;
+  onItemEffectsChange?: (id: string, effects: ClipEffect[]) => void;
   onSeedChat?: (text: string) => void;
 }
 
@@ -105,6 +107,7 @@ export function PreviewTransformOverlay({
   onBeginHistoryGesture,
   onEndHistoryGesture,
   onItemPropChange,
+  onItemEffectsChange,
   onSeedChat,
 }: PreviewTransformOverlayProps) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -478,6 +481,12 @@ export function PreviewTransformOverlay({
             )}
         </>
       )}
+      {selectedCandidate && onItemEffectsChange
+        && (selectedCandidate.item.kind === 'video' || selectedCandidate.item.kind === 'image' || selectedCandidate.item.kind === 'sequence') && (
+          <PreviewMosaicOverlay key={selectedCandidate.item.id} state={state} candidate={selectedCandidate}
+            onChange={onItemEffectsChange} onPause={() => playerRef.current?.pause()}
+            onBeginHistoryGesture={onBeginHistoryGesture} onEndHistoryGesture={onEndHistoryGesture} />
+        )}
     </div>
   );
 }

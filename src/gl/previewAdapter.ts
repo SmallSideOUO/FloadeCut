@@ -2,7 +2,7 @@ import { GLSL_TRANSITION_TYPES } from '../editor/types';
 import type { TransitionItem } from '../editor/types';
 
 export type SelectedPreviewKind = 'effect' | 'transition';
-export type SelectedPreviewAdapter = 'gl-effect' | 'gl-transition' | 'css-transition' | 'source-fallback';
+export type SelectedPreviewAdapter = 'gl-effect' | 'svg-effect' | 'gl-transition' | 'css-transition' | 'source-fallback';
 export type SelectedPreviewPhase = 'waiting' | 'ready' | 'fallback' | 'inactive';
 export type SelectedPreviewFallbackReason =
   | 'media-loading'

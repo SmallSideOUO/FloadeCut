@@ -1,4 +1,5 @@
 export default {
+  '外部工具修改審閱': 'Review external tool edits',
   '审阅评论': 'Review comments',
   '评论': 'Comments',
   '评论加载失败': 'Failed to load comments',

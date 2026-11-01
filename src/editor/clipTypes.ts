@@ -161,6 +161,8 @@ export interface TimelineItem extends TranscriptCarrier {
   sourceContentHash?: string;
   /** Nested sequence reference. Required when kind='sequence'; absent on legacy items. */
   timelineId?: string;
+  /** Reversible compound created from timeline clips; timelineId owns the editable originals. */
+  compound?: boolean;
   /** Persistent multicam membership; copied by split so angle identity survives edits. */
   multicamGroupId?: string;
   multicamAngleId?: string;

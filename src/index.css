@@ -2105,6 +2105,18 @@ html[data-cc-skin='latte'] .floade-dashboard > header img, html[data-cc-skin='la
 .cc-preview-transform-crop-e,.cc-preview-transform-crop-w { cursor:ew-resize; }
 .cc-preview-transform-rotate { border-radius:50%; cursor:grab; }
 .cc-preview-transform-rotate:active { cursor:grabbing; }
+.cc-preview-mosaic-overlay { position:absolute; inset:0; z-index:4; pointer-events:none; }
+.cc-preview-mosaic-region { position:absolute; inset:0; pointer-events:none; }
+.cc-preview-mosaic-region.active { z-index:1; }
+.cc-preview-mosaic-outline { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
+.cc-preview-mosaic-outline polygon { fill:transparent; stroke:var(--cc-accent); stroke-width:1.5; stroke-dasharray:5 3; pointer-events:all; cursor:move; }
+.cc-preview-mosaic-region.active polygon { stroke-dasharray:none; }
+.cc-preview-mosaic-label { position:absolute; transform:translateY(-100%); pointer-events:auto; cursor:move; border:0; border-radius:3px 3px 0 0; padding:3px 6px; font-size:10px; white-space:nowrap; background:var(--cc-panel); color:var(--cc-accent); }
+.cc-preview-mosaic-handle { pointer-events:auto; border-radius:2px; }
+.cc-preview-mosaic-nw,.cc-preview-mosaic-se { cursor:nwse-resize; }
+.cc-preview-mosaic-ne,.cc-preview-mosaic-sw { cursor:nesw-resize; }
+.cc-preview-mosaic-n,.cc-preview-mosaic-s { cursor:ns-resize; }
+.cc-preview-mosaic-e,.cc-preview-mosaic-w { cursor:ew-resize; }
 /* Text / MG style bar above the transform outline (same chrome as caption edit). */
 .cc-preview-text-edit-bar {
   position:absolute; z-index:6; pointer-events:auto;

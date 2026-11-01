@@ -1,6 +1,7 @@
-import { mkdir, rm, symlink } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import { copyFile, link, mkdir, rm } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
-import { basename, dirname, join } from 'node:path';
+import { basename, join } from 'node:path';
 import type { ExportMediaReference } from '../../src/export/exportMediaPlan.ts';
 import { uploadNameOfSource } from '../media-dir.ts';
 
@@ -11,11 +12,14 @@ export interface ExportReferenceMaterialization {
   readonly localPaths: readonly string[];
 }
 
-async function removeLinks(paths: readonly string[]): Promise<void> {
+async function removeMaterializedReferences(paths: readonly string[]): Promise<void> {
   await Promise.all(paths.map((path) => rm(path, { recursive: true, force: true })));
 }
 
-/** Expose external folders to the isolated Remotion bundle without copying media bytes. */
+/** Stage only the referenced file: hard-link when possible, copy across volumes.
+ * Windows directory junctions can be unreadable to the packaged renderer even
+ * though creation succeeds. Regular files also avoid exposing sibling media.
+ */
 export async function materializeExportReferences(
   references: readonly ExportMediaReference[],
   uploadDirectory: string,
@@ -35,8 +39,17 @@ export async function materializeExportReferences(
       await mkdir(root, { recursive: true });
       const linkName = randomUUID();
       const linkPath = join(root, linkName);
-      await symlink(dirname(source), linkPath, process.platform === 'win32' ? 'junction' : 'dir');
+      await mkdir(linkPath);
       localPaths.push(linkPath);
+      const stagedFile = join(linkPath, basename(source));
+      try {
+        await link(source, stagedFile);
+      } catch {
+        signal?.throwIfAborted();
+        // FICLONE falls back to a normal copy when the filesystem cannot clone.
+        await copyFile(source, stagedFile, constants.COPYFILE_FICLONE);
+      }
+      signal?.throwIfAborted();
       replacements.set(
         reference.source,
         `/media/uploads/${EXPORT_REFERENCE_DIRECTORY}/${linkName}/${encodeURIComponent(basename(source))}`,
@@ -45,7 +58,7 @@ export async function materializeExportReferences(
     signal?.throwIfAborted();
     return { replacements, localPaths };
   } catch (error) {
-    await removeLinks(localPaths);
+    await removeMaterializedReferences(localPaths);
     throw error;
   }
 }

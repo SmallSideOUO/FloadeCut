@@ -70,6 +70,14 @@ export function ClipContextMenu({ item, transitions, x, y, playhead, commands, t
   const batchIds = selectedIds.includes(item.id) && selectedIds.length > 1 ? selectedIds : [item.id];
   const referenceItems = contextReferenceItems(item.id, selectedIds, timeline.items);
   const batchN = batchIds.length;
+  const batchItems = timeline.items.filter((entry) => batchIds.includes(entry.id));
+  const compoundsOnly = batchItems.length > 0 && batchItems.every((entry) => entry.compound && entry.kind === 'sequence');
+  const compoundLocked = batchItems.some((entry) => timeline.tracks?.[entry.track]?.locked);
+  const changeCompound = (dissolve: boolean) => {
+    const result = dissolve ? commands.uncompoundClips(batchIds) : commands.compoundClips(batchIds, t('合并片段'));
+    if (result.ok) onClose();
+    else setSyncMsg(t(result.error ?? '无法合并所选片段。'));
+  };
   // Multicam: need ≥2 selected video/audio with media
   const multicamIds = (batchN > 1 ? batchIds : selectedIds.length > 1 ? selectedIds : [])
     .map((id) => timeline.items.find((x) => x.id === id))
@@ -208,6 +216,14 @@ export function ClipContextMenu({ item, transitions, x, y, playhead, commands, t
     <div ref={ref} style={style}>
       <Item label={t('添加评论')} icon="clipboard" onClick={run(() => onAddComment(item, reviewFrame, x, y))} />
       <Sep />
+      {batchN > 1 && <Item label={t('合并为一个片段（{n}）', { n: batchN })} icon="film" disabled={compoundLocked}
+        onClick={() => changeCompound(false)} />}
+      {compoundsOnly && <>
+        <Item label={t('取消合并片段')} icon="unlock" disabled={compoundLocked} onClick={() => changeCompound(true)} />
+        <div style={{ padding: '0 9px 6px', fontSize: 10.5, color: theme.textDim, maxWidth: 245 }}>
+          {t('还原原始片段，并移除合并片段上的马赛克等效果。')}
+        </div>
+      </>}
       <Item
         label={syncBusy ? t('多机位同步中…') : t('AI 多机位同步')}
         icon="users"

@@ -4,6 +4,12 @@ import path from 'node:path';
 
 const MAX_ERROR_OUTPUT = 32_768;
 
+export function needsAacFinalization({ platform = process.platform, codec, customOverride = false, binariesDirectory }) {
+  // The Windows mirror uses ffmpeg-static for NVENC/QSV. It has native AAC
+  // but not Remotion's libfdk_aac, including on native NVENC/software attempts.
+  return Boolean(binariesDirectory && (customOverride || (platform === 'win32' && codec === 'h264')));
+}
+
 function ffmpegPath(binariesDirectory) {
   return path.join(binariesDirectory, process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg');
 }

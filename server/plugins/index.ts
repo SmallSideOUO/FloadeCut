@@ -9,6 +9,7 @@ import { externalAgentPlugin } from './external-agent.ts';
 import { settingsPlugin } from './settings.ts';
 import { exportStagePlugin } from './export-stage.ts';
 import { exportPlugin } from './export.ts';
+import { localCommandsPlugin } from './local-commands.ts';
 import { exportDestinationPlugin } from './export-destination.ts';
 import { exportMediaSourcesPlugin } from './export-media-sources.ts';
 import { exportQaPlugin } from './export-qa.ts';
@@ -40,6 +41,7 @@ export function serverPlugins(options: { projectStoreHttp?: boolean } = {}): Plu
     settingsPlugin(),
     exportStagePlugin(),
     exportPlugin(),
+    localCommandsPlugin(),
     exportDestinationPlugin(),
     exportMediaSourcesPlugin(),
     exportQaPlugin(),

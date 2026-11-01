@@ -2,6 +2,21 @@
 // Source: src/components/timeline/*(Timeline/Toolbar/TrackHead/TrackLane/ClipContextMenu/
 // MarkerEditor/TimelineRuler/TimelineTabs/libraryDropActions).
 export default {
+  '合并片段': 'Compound clip',
+  '合并片段目前支持局部马赛克，请在内部片段上添加其他特效。': 'Compound clips support local mosaics. Apply other effects to the clips inside the compound.',
+  '合并为一个片段（{n}）': 'Create compound clip ({n})',
+  '取消合并片段': 'Dissolve compound clip',
+  '还原原始片段，并移除合并片段上的马赛克等效果。': 'Restore the original clips and remove effects applied to the compound.',
+  '无法合并所选片段。': 'Unable to combine the selected clips.',
+  '请先选择两个或以上片段。': 'Select at least two clips first.',
+  '请先解锁所选片段的轨道。': 'Unlock the selected clips’ tracks first.',
+  '请一并选择转场两侧的片段，或先移除边界转场。': 'Select both sides of each transition, or remove the boundary transition first.',
+  '请一并选择链接或同步锁定组的所有片段，或先取消链接。': 'Select every member of the linked or sync-locked group, or unlink it first.',
+  '所选片段正在驱动字幕，请先将字幕转为独立字幕再合并，以保留字幕内容。': 'These clips drive captions. Convert the captions to independent captions before combining to preserve their content.',
+  '请先解除多机位组，再合并片段。': 'Ungroup multicam clips before combining.',
+  '所选片段不是合并片段。': 'The selected clips are not compound clips.',
+  '请先将合并片段恢复为 1× 速度，再取消合并。': 'Restore the compound clip to 1× speed before dissolving.',
+  '请先移除合并片段的边界转场，再取消合并。': 'Remove the compound clip’s boundary transitions before dissolving.',
   // ── Timeline.tsx ──
   '该轨道还没有可用文字稿': 'This track has no usable transcript yet',
   '导出 MG 动画中（ProRes 4444）…': 'Exporting MG animation (ProRes 4444)…',

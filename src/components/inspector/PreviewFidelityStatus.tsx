@@ -16,7 +16,7 @@ export function PreviewFidelityStatus({ status }: { status?: SelectedPreviewStat
   if (!status || status.phase === 'inactive') return null;
   const fallback = status.phase === 'fallback';
   const label = status.phase === 'ready'
-    ? t('真实 GL 预览 · 与导出共用参数')
+    ? status.adapter === 'svg-effect' ? t('马赛克预览 · 与导出共用参数') : t('真实 GL 预览 · 与导出共用参数')
     : status.phase === 'waiting'
       ? t('正在准备真实 GL 预览…')
       : status.adapter === 'css-transition'

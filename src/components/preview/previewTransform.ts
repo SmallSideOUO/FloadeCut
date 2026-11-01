@@ -155,7 +155,7 @@ const rotatePoint = (point: PreviewPoint, center: PreviewPoint, degrees: number)
   return { x: center.x + x * cos - y * sin, y: center.y + x * sin + y * cos };
 };
 
-const applyTransform = (
+export const applyTransform = (
   state: Pick<TimelineState, 'width' | 'height'>,
   point: PreviewPoint,
   transform: EffectivePreviewTransform,
@@ -186,7 +186,7 @@ export function previewCandidateGeometry(state: TimelineState, candidate: Previe
   return { baseRect, center: applyTransform(state, rawCenter, candidate.transform), corners };
 }
 
-const inverseTransform = (
+export const inverseTransform = (
   state: Pick<TimelineState, 'width' | 'height'>,
   point: PreviewPoint,
   transform: EffectivePreviewTransform,

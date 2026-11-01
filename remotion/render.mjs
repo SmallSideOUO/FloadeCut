@@ -15,7 +15,7 @@ import {
   h264HardwareSupportsDimensions,
   SOFTWARE_H264_PROFILE,
 } from './performance.mjs';
-import { renderDirectHardware } from './direct-hardware.mjs';
+import { needsAacFinalization, renderDirectHardware } from './direct-hardware.mjs';
 import { assertMaterializedRenderSnapshot, normalizeH264Profile } from './render-contract.mjs';
 import { resolveRenderTimeout } from './render-timeout.mjs';
 import { getServeUrl } from './serve-bundle.mjs';
@@ -103,9 +103,11 @@ export async function withAbortableCompositionSelection({
 
 function directHardwareRenderer(directBinaries, abortSignal) {
   if (!directBinaries) return renderMedia;
-  // The custom ffmpeg override marks the hardware attempt; the software retry drops it
-  // but keeps binariesDirectory, which every attempt needs once the app ships as an asar.
-  return (attempt) => attempt.ffmpegOverride
+  // Both Windows NVENC and its software retry use a rich FFmpeg build without
+  // libfdk_aac. Keep the compatible audio pass on either attempt.
+  return (attempt) => needsAacFinalization({
+    binariesDirectory: directBinaries, codec: attempt.codec, customOverride: !!attempt.ffmpegOverride,
+  })
     ? renderDirectHardware({ render: renderMedia, options: attempt, binariesDirectory: directBinaries, signal: abortSignal })
     : renderMedia(attempt);
 }
@@ -139,7 +141,10 @@ async function renderMediaOptimized(options) {
   const customOverride = profile?.hardware && hardwareAcceleration === 'disable'
     ? h264FfmpegOverride(profile.id, { vaapiDevice })
     : undefined;
-  const directBinaries = customOverride ? binariesDirectory() : null;
+  const runtimeBinaries = binariesDirectory();
+  const directBinaries = needsAacFinalization({
+    binariesDirectory: runtimeBinaries, codec: renderOptions.codec, customOverride: !!customOverride,
+  }) ? runtimeBinaries : null;
   const automaticBitrate = profile?.hardware && !renderOptions.videoBitrate
     ? resolveH264VideoBitrate({
       width: renderOptions.composition.width,

@@ -2,6 +2,13 @@
 // Source: src/gl/fx/effects.ts(name/desc/parameter label of ALL_FX/LUT_EFFECTS; display package t(),
 // The data file itself does not move). Common words (brightness/contrast/saturation/color/direction/rotation/zoom/mode/speed) that are already in other fragments will not be collected repeatedly.
 export default {
+  '马赛克预览 · 与导出共用参数': 'Mosaic preview · shared export parameters',
+  '＋ 添加局部马赛克': '＋ Add Local Mosaic',
+  '在预览画面拖动马赛克区域，拖动控制点调整大小；可添加多个区域。': 'Drag a mosaic region in the preview to move it, or drag its handles to resize. You can add multiple regions.',
+  '局部马赛克区域': 'Local mosaic regions',
+  '移动马赛克区域 {n}': 'Move mosaic region {n}',
+  '调整马赛克区域 {n} 大小': 'Resize mosaic region {n}',
+  '马赛克 {n}': 'Mosaic {n}',
   // ── FX names ──
   '黑底叠加': 'Luma Key',
   '局部马赛克': 'Local Mosaic',

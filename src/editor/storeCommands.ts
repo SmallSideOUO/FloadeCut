@@ -179,6 +179,8 @@ export interface EditorCommands {
   applyState: (state: TimelineState) => void;
   /** atomically replace the whole project (project-level proposal apply → one undo step) */
   applyDoc: (doc: ProjectDoc) => void;
+  compoundClips: (ids: readonly string[], name: string) => { ok: boolean; error?: string };
+  uncompoundClips: (ids: readonly string[]) => { ok: boolean; error?: string };
   /** Execute multiple reducer operations as one undo/redo history entry. */
   batch: (actions: AtomicAction[], label?: string) => void;
   // ── Multiple timelines ──────────────────────────────────────────────────

@@ -75,7 +75,7 @@ export function ClipFx({ item, fit, width, height, frameOffset = 0, onPreviewSta
   const runtimeRef = useRef<GlRuntime | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const failedAdapterRef = useRef<{ definitionKey: string; reason: SelectedPreviewFallbackReason } | null>(null);
-  const stagedRenderKeyRef = useRef<string | null>(null);
+  const stagedSourceKeyRef = useRef<string | null>(null);
   const hasRenderedRef = useRef(false);
   const [hasRendered, setHasRendered] = useState(false);
   const trimBefore = sourceFrameAt(item, frameOffset);
@@ -92,35 +92,42 @@ export function ClipFx({ item, fit, width, height, frameOffset = 0, onPreviewSta
     () => active.map(({ def }) => `${def.id}:${def.frag}`).join('\u0000'),
     [active],
   );
+  // Decoded pixels do not depend on effect parameters. A paused video does
+  // not emit another frame when a mosaic moves, so keep that source ready
+  // while uniforms change; seeks, relinks and retiming still need fresh pixels.
+  const sourceKey = useMemo(
+    () => JSON.stringify([item.src, frame, fit, width, height, trimBefore, item.playbackRate ?? 1, videoDecoder]),
+    [item.src, frame, fit, width, height, trimBefore, item.playbackRate, videoDecoder],
+  );
   const renderKey = useMemo(
-    () => JSON.stringify([frame, fit, width, height, active.map(({ fx }) => [fx.id, fx.overrides])]),
-    [frame, fit, width, height, active],
+    () => JSON.stringify([sourceKey, active.map(({ fx }) => [fx.id, fx.overrides])]),
+    [sourceKey, active],
   );
   const onVideoFrame = useCallback(
     (source: CanvasImageSource) => {
       const ctx = staging.getContext('2d');
       if (!ctx) return;
       drawFit(ctx, source, fit);
-      stagedRenderKeyRef.current = renderKey;
+      stagedSourceKeyRef.current = sourceKey;
     },
-    [fit, renderKey, staging],
+    [fit, sourceKey, staging],
   );
   // <OffthreadVideo> reloads its image element whenever onVideoFrame changes
   // identity, just as it revokes that frame's blob URL for the next frame —
   // one failed-load warning per rendered frame. A stable callback stages under
   // the latest key instead: a server render mounts the next frame's image only
   // after this frame's key is committed.
-  const offthreadTargetRef = useRef({ fit, renderKey });
+  const offthreadTargetRef = useRef({ fit, sourceKey });
   useLayoutEffect(() => {
-    offthreadTargetRef.current = { fit, renderKey };
-  }, [fit, renderKey]);
+    offthreadTargetRef.current = { fit, sourceKey };
+  }, [fit, sourceKey]);
   const onOffthreadVideoFrame = useCallback(
     (source: CanvasImageSource) => {
       const ctx = staging.getContext('2d');
       if (!ctx) return;
       const target = offthreadTargetRef.current;
       drawFit(ctx, source, target.fit);
-      stagedRenderKeyRef.current = target.renderKey;
+      stagedSourceKeyRef.current = target.sourceKey;
     },
     [staging],
   );
@@ -179,7 +186,7 @@ export function ClipFx({ item, fit, width, height, frameOffset = 0, onPreviewSta
     const tick = () => {
       const decodedVideo = item.kind !== 'image';
       const mediaReady = decodedVideo
-        ? stagedRenderKeyRef.current === renderKey
+        ? stagedSourceKeyRef.current === sourceKey
         : !!imageRef.current?.complete;
       if (!mediaReady) { reportWaiting(); raf = requestAnimationFrame(tick); return; }
       if (active.some(({ def }) => def.cube && !cubeSettled(def.cube))) { reportWaiting(); raf = requestAnimationFrame(tick); return; }
@@ -214,7 +221,7 @@ export function ClipFx({ item, fit, width, height, frameOffset = 0, onPreviewSta
     };
     tick();
     return () => { cancelAnimationFrame(raf); finish(); };
-  }, [active, definitionKey, fit, staging, item.id, item.kind, frame, fps, isRendering, renderKey, onPreviewStatus]);
+  }, [active, definitionKey, fit, staging, item.id, item.kind, frame, fps, isRendering, sourceKey, renderKey, onPreviewStatus]);
 
   useEffect(() => () => {
     disposeRuntimeSlot(runtimeRef);

@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { SequenceMosaic } from './SequenceMosaic';
+import { SEQUENCE_MOSAIC_ID } from './sequenceMosaicParams';
 import { AbsoluteFill, Sequence, getRemotionEnvironment, useCurrentFrame } from 'remotion';
 import { CaptionsLayer } from '../captions/CaptionsLayer';
 import { GlTransition } from '../gl/GlTransition';
@@ -178,8 +180,10 @@ function TimelineContent({ state, project, transparent, browserRenderer = false,
   const selectedEffectItem = environment.isPlayer
     ? state.items.find((item) => item.id === selectedItemId)
     : undefined;
-  const selectedEffectStaticStatus = selectedEffectItem
-    ? staticEffectPreviewStatus({
+  const sequenceMosaicReady = selectedEffectItem?.kind === 'sequence' && selectedEffectItem.effects?.length
+    && selectedEffectItem.effects.every((effect) => effect.assetId === SEQUENCE_MOSAIC_ID);
+  const selectedEffectStaticStatus: SelectedPreviewStatus | null = selectedEffectItem
+    ? sequenceMosaicReady ? { kind: 'effect', targetId: selectedEffectItem.id, adapter: 'svg-effect', phase: 'ready' } : staticEffectPreviewStatus({
         targetId: selectedEffectItem.id,
         effects: selectedEffectItem.effects ?? [],
         registeredEffects: ALL_FX,
@@ -318,7 +322,9 @@ function TimelineContent({ state, project, transparent, browserRenderer = false,
           <ClipWrapper item={item} frameOffset={-eb} hiddenByCaptions={hiddenByCaptions}>
             {(borderRadius) => item.kind === 'sequence'
               ? <VisualClipSurface item={item} fit={fit} canvasW={state.width} canvasH={state.height} borderRadius={borderRadius}>
+                  <SequenceMosaic effects={item.effects} width={state.width} height={state.height}>
                   <NestedSequenceLayer item={item} project={project} parentWidth={state.width} parentHeight={state.height} fit={fit} frameOffset={-eb} browserRenderer={browserRenderer} sequenceLimits={sequenceLimits} muted={isMuted(item.track)} />
+                  </SequenceMosaic>
                 </VisualClipSurface>
               : item.kind === 'motion-graphic'
               ? <ItemLayer item={item} canvasW={state.width} canvasH={state.height} fit={fit} borderRadius={borderRadius} />

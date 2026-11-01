@@ -6,6 +6,7 @@ import { bundle } from '@remotion/bundler';
 import path from 'node:path';
 import { cp, mkdir, rm, symlink } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
+import { mirrorReadableUploads } from './upload-mirror.mjs';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ENTRY_POINT = path.join(REPO_ROOT, 'remotion', 'index.ts');
@@ -110,6 +111,15 @@ async function relinkUploads(serveUrl) {
   const linkPath = path.join(serveUrl, 'media', 'uploads');
   try {
     await rm(linkPath, { recursive: true, force: true });
+    if (process.platform === 'win32') {
+      // Packaged Electron can create junctions whose print target looks valid
+      // but whose paths return ENOENT to the render server. Mirror regular
+      // files instead; same-volume hard links keep large videos inexpensive.
+      await mkdir(linkPath, { recursive: true });
+      uploadsLive = false;
+      linkedDir = dir;
+      return;
+    }
     // Win32 uses junction: the directory soft link requires administrator/developer mode, junction is privilege-free (requires absolute path, dir is always absolute)
     await symlink(dir, linkPath, process.platform === 'win32' ? 'junction' : 'dir');
     uploadsLive = true;
@@ -139,7 +149,7 @@ export async function getServeUrl() {
   }
   if (!uploadsLive) {
     await mkdir(dir, { recursive: true }); // ensure exists: cp must never ENOENT-race
-    await cp(dir, path.join(serveUrl, 'media', 'uploads'), { recursive: true });
+    await mirrorReadableUploads(dir, path.join(serveUrl, 'media', 'uploads'));
   }
   return serveUrl;
 }

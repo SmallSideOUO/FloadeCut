@@ -1,0 +1,38 @@
+import assert from 'node:assert/strict';
+import { mkdtemp, mkdir, writeFile, readFile, lstat, symlink, unlink, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { mirrorReadableUploads } from './upload-mirror.mjs';
+const root = await mkdtemp(path.join(tmpdir(), 'floade-upload-mirror-'));
+try {
+  const source = path.join(root, 'uploads');
+  const dest = path.join(root, 'render', 'media', 'uploads');
+  await mkdir(path.join(source, 'export-references', 'job'), { recursive: true });
+  await mkdir(path.join(source, '.references'), { recursive: true });
+  await writeFile(path.join(source, '.references', 'private.json'), 'private path');
+  const file = path.join(source, 'export-references', 'job', 'video with spaces.mp4');
+  await writeFile(file, 'first video');
+  await symlink(path.join(root, 'missing-target'), path.join(source, 'broken'), process.platform === 'win32' ? 'junction' : 'dir');
+  await mirrorReadableUploads(source, dest);
+  const mirrored = path.join(dest, 'export-references', 'job', path.basename(file));
+  assert.equal(await readFile(mirrored, 'utf8'), 'first video');
+  assert.equal((await lstat(dest)).isSymbolicLink(), false);
+  assert.equal((await lstat(mirrored)).isSymbolicLink(), false);
+  assert.ok((await lstat(file)).nlink >= 2);
+  await assert.rejects(lstat(path.join(dest, '.references')), { code: 'ENOENT' });
+  await assert.rejects(lstat(path.join(dest, 'broken')), { code: 'ENOENT' });
+  await unlink(file);
+  await writeFile(file, 'new source');
+  await mirrorReadableUploads(source, dest);
+  assert.equal(await readFile(mirrored, 'utf8'), 'new source');
+  await unlink(file);
+  await mirrorReadableUploads(source, dest);
+  await assert.rejects(lstat(mirrored), { code: 'ENOENT' });
+  await assert.rejects(mirrorReadableUploads(source, source), /separate/);
+  const unsafe = path.join(root, 'unsafe');
+  await symlink(source, unsafe, process.platform === 'win32' ? 'junction' : 'dir');
+  await assert.rejects(mirrorReadableUploads(source, unsafe), /regular directory/);
+  assert.equal(await readFile(path.join(source, '.references', 'private.json'), 'utf8'), 'private path');
+  await unlink(unsafe).catch(() => rm(unsafe, { recursive: false, force: true }));
+  console.log('upload-mirror.verify: regular paths, hard links, broken references, replacement, pruning and source preservation passed');
+} finally { await rm(root, { recursive: true, force: true }); }

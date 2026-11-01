@@ -11,6 +11,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 
 /**
  * Verifies deliberately left out of the suite, each with the reason it cannot
@@ -30,8 +31,19 @@ assert.ok(tracked.length > 100, `expected the repo to track many verifies, found
 
 const scripts = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).scripts;
 const allCommands = Object.values(scripts).join(' && ');
+const reachable = new Set(tracked.filter((file) => allCommands.includes(file)));
+// A registered entry may split its checks into statically imported verify modules.
+// Follow those imports so the audit accepts executed helpers without running them twice.
+for (const file of reachable) {
+  const source = readFileSync(path.join(root, file), 'utf8');
+  for (const match of source.matchAll(/\b(?:import\s*|from\s*)['"](\.[^'"]+\.verify(?:\.(?:tsx|ts|mjs))?)['"]/g)) {
+    const relative = path.posix.normalize(path.posix.join(path.posix.dirname(file), match[1]));
+    const dependency = [relative, `${relative}.ts`, `${relative}.tsx`, `${relative}.mjs`].find((candidate) => tracked.includes(candidate));
+    if (dependency) reachable.add(dependency);
+  }
+}
 
-const unregistered = tracked.filter((file) => !allCommands.includes(file) && !EXCLUDED.has(file));
+const unregistered = tracked.filter((file) => !reachable.has(file) && !EXCLUDED.has(file));
 assert.deepEqual(
   unregistered,
   [],
